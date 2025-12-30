@@ -6,8 +6,6 @@
 
 #include <vterm.h>
 
-#include <QKeyEvent>
-#include <QPainter>
 #include <QApplication>
 #include <QBuffer>
 #include <QClipboard>
@@ -17,9 +15,11 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QKeyEvent>
 #include <QMap>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QSettings>
 #include <QTextStream>
 #include <QUrl>
@@ -52,10 +52,10 @@ TerminalTheme TerminalTheme::breezeDark() {
             QColor(252, 252, 252),
             QColor(35, 38, 39),
             {QColor(35, 38, 39), QColor(237, 21, 21), QColor(17, 209, 22), QColor(246, 116, 0),
-             QColor(29, 153, 243), QColor(155, 89, 182), QColor(26, 188, 156), QColor(252, 252, 252),
-             QColor(127, 140, 141), QColor(192, 57, 43), QColor(28, 220, 154), QColor(253, 188, 75),
-             QColor(61, 174, 233), QColor(142, 68, 173), QColor(22, 160, 133),
-             QColor(255, 255, 255)}};
+             QColor(29, 153, 243), QColor(155, 89, 182), QColor(26, 188, 156),
+             QColor(252, 252, 252), QColor(127, 140, 141), QColor(192, 57, 43),
+             QColor(28, 220, 154), QColor(253, 188, 75), QColor(61, 174, 233), QColor(142, 68, 173),
+             QColor(22, 160, 133), QColor(255, 255, 255)}};
 }
 
 TerminalTheme TerminalTheme::solarizedDark() {
@@ -63,10 +63,10 @@ TerminalTheme TerminalTheme::solarizedDark() {
             QColor(131, 148, 150),
             QColor(0, 43, 54),
             {QColor(7, 54, 66), QColor(220, 50, 47), QColor(133, 153, 0), QColor(181, 137, 0),
-             QColor(38, 139, 210), QColor(211, 54, 130), QColor(42, 161, 152), QColor(238, 232, 213),
-             QColor(0, 43, 54), QColor(203, 75, 22), QColor(88, 110, 117), QColor(101, 123, 131),
-             QColor(131, 148, 150), QColor(108, 113, 196), QColor(147, 161, 161),
-             QColor(253, 246, 227)}};
+             QColor(38, 139, 210), QColor(211, 54, 130), QColor(42, 161, 152),
+             QColor(238, 232, 213), QColor(0, 43, 54), QColor(203, 75, 22), QColor(88, 110, 117),
+             QColor(101, 123, 131), QColor(131, 148, 150), QColor(108, 113, 196),
+             QColor(147, 161, 161), QColor(253, 246, 227)}};
 }
 
 TerminalTheme TerminalTheme::retroGreen() {
@@ -101,8 +101,9 @@ TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
     QTextStream in(&file);
     while (!in.atEnd()) {
         QString line = in.readLine().trimmed();
-        if (line.isEmpty() || line.startsWith(';'))
+        if (line.isEmpty() || line.startsWith(';')) {
             continue;
+        }
         if (line.startsWith('[') && line.endsWith(']')) {
             currentSection = line.mid(1, line.length() - 2);
         } else if (!currentSection.isEmpty()) {
@@ -120,12 +121,14 @@ TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
     }
 
     theme.foreground = parseColor(sections["Foreground"]["Color"]);
-    if (!theme.foreground.isValid())
+    if (!theme.foreground.isValid()) {
         theme.foreground = Qt::white;
+    }
 
     theme.background = parseColor(sections["Background"]["Color"]);
-    if (!theme.background.isValid())
+    if (!theme.background.isValid()) {
         theme.background = Qt::black;
+    }
 
     for (int i = 0; i < 16; ++i) {
         QString section = QString("Color%1%2").arg(i % 8).arg(i >= 8 ? "Intense" : "");
@@ -141,8 +144,9 @@ TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
 TerminalTheme TerminalTheme::loadWindowsTerminalTheme(const QString &path) {
     TerminalTheme theme;
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
+    if (!file.open(QIODevice::ReadOnly)) {
         return theme;
+    }
 
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     QJsonObject obj = doc.object();
@@ -151,10 +155,10 @@ TerminalTheme TerminalTheme::loadWindowsTerminalTheme(const QString &path) {
     theme.foreground = QColor(obj.value("foreground").toString());
     theme.background = QColor(obj.value("background").toString());
 
-    QStringList keys = {"black",       "red",          "green",        "yellow",
-                        "blue",        "purple",       "cyan",         "white",
-                        "brightBlack", "brightRed",    "brightGreen",  "brightYellow",
-                        "brightBlue",  "brightPurple", "brightCyan",   "brightWhite"};
+    QStringList keys = {"black",       "red",          "green",       "yellow",
+                        "blue",        "purple",       "cyan",        "white",
+                        "brightBlack", "brightRed",    "brightGreen", "brightYellow",
+                        "brightBlue",  "brightPurple", "brightCyan",  "brightWhite"};
 
     for (int i = 0; i < 16; ++i) {
         theme.palette[i] = QColor(obj.value(keys[i]).toString());
@@ -713,16 +717,18 @@ void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
                     }
                 }
             }
-            if (info.name.isEmpty())
+            if (info.name.isEmpty()) {
                 info.name = QFileInfo(info.path).baseName();
+            }
         } else {
             QFile file(info.path);
             if (file.open(QIODevice::ReadOnly)) {
                 QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
                 info.name = doc.object().value("name").toString();
             }
-            if (info.name.isEmpty())
+            if (info.name.isEmpty()) {
                 info.name = QFileInfo(info.path).baseName();
+            }
         }
         themes.append(info);
     }
@@ -749,8 +755,9 @@ void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
         QMap<QString, QMenu *> subMenus;
         for (const auto &info : themes) {
             QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
-            if (!firstLetterChar.isLetter())
+            if (!firstLetterChar.isLetter()) {
                 firstLetterChar = QChar('#');
+            }
 
             QString firstLetter(firstLetterChar);
             if (!subMenus.contains(firstLetter)) {
@@ -793,7 +800,8 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     auto *wtMenu = themesMenu->addMenu(tr("Windows Terminal"));
 
     populateThemeMenu(konsoleMenu, ":/themes/konsole", TerminalTheme::ThemeFormat::Konsole);
-    populateThemeMenu(wtMenu, ":/themes/windowsterminal", TerminalTheme::ThemeFormat::WindowsTerminal);
+    populateThemeMenu(wtMenu, ":/themes/windowsterminal",
+                      TerminalTheme::ThemeFormat::WindowsTerminal);
 
     emit contextMenuRequested(menu, event->globalPos());
 

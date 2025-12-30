@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <QColor>
 #include <QFont>
 #include <QMenu>
 #include <QScrollBar>
@@ -11,7 +12,6 @@
 #include <QWidget>
 #include <deque>
 #include <vector>
-#include <QColor>
 #include <vterm.h>
 
 class PtyProcess;
@@ -22,10 +22,7 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat {
-        Konsole,
-        WindowsTerminal
-    };
+    enum class ThemeFormat { Konsole, WindowsTerminal };
 
     struct ThemeInfo {
         QString name;
@@ -95,7 +92,8 @@ class KodoTerm : public QWidget {
   private:
     void setupPty();
     void updateTerminalSize();
-    void populateThemeMenu(QMenu *parentMenu, const QString &dirPath, TerminalTheme::ThemeFormat format);
+    void populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
+                           TerminalTheme::ThemeFormat format);
     void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected);
     QColor mapColor(const VTermColor &c, const VTermState *state) const;
     QString getTextRange(VTermPos start, VTermPos end);
