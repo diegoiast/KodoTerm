@@ -14,6 +14,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QKeyEvent>
@@ -494,6 +495,9 @@ int KodoTerm::onSetTermProp(VTermProp prop, VTermValue *val, void *user) {
     case VTERM_PROP_TITLE:
         widget->setWindowTitle(QString::fromUtf8(val->string.str, (int)val->string.len));
         break;
+    case VTERM_PROP_MOUSE:
+        widget->m_mouseMode = val->number;
+        break;
     default:
         break;
     }
@@ -533,13 +537,69 @@ void KodoTerm::wheelEvent(QWheelEvent *event) {
         }
         return;
     }
+
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        VTermModifier mod = VTERM_MOD_NONE;
+        if (event->modifiers() & Qt::ShiftModifier) {
+            mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
+        }
+        if (event->modifiers() & Qt::ControlModifier) {
+            mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
+        }
+        if (event->modifiers() & Qt::AltModifier) {
+            mod = (VTermModifier)(mod | VTERM_MOD_ALT);
+        }
+
+        int screenRow = event->position().toPoint().y() / m_cellSize.height();
+        int screenCol = event->position().toPoint().x() / m_cellSize.width();
+        int button = event->angleDelta().y() > 0 ? 4 : 5;
+
+        vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
+        vterm_mouse_button(m_vterm, button, true, mod);
+        vterm_screen_flush_damage(m_vtermScreen);
+        return;
+    }
+
     m_scrollBar->event(event);
 }
 
 void KodoTerm::mousePressEvent(QMouseEvent *event) {
+    VTermModifier mod = VTERM_MOD_NONE;
+    if (event->modifiers() & Qt::ShiftModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
+    }
+    if (event->modifiers() & Qt::ControlModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
+    }
+    if (event->modifiers() & Qt::AltModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
+    }
+
+    VTermPos vpos = mouseToPos(event->pos());
+    int screenRow = event->pos().y() / m_cellSize.height();
+    int screenCol = event->pos().x() / m_cellSize.width();
+
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        int button = 0;
+        if (event->button() == Qt::LeftButton) {
+            button = 1;
+        } else if (event->button() == Qt::MiddleButton) {
+            button = 2;
+        } else if (event->button() == Qt::RightButton) {
+            button = 3;
+        }
+
+        if (button > 0) {
+            vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
+            vterm_mouse_button(m_vterm, button, true, mod);
+            vterm_screen_flush_damage(m_vtermScreen);
+            return;
+        }
+    }
+
     if (event->button() == Qt::LeftButton) {
         m_selecting = true;
-        m_selectionStart = mouseToPos(event->pos());
+        m_selectionStart = vpos;
         m_selectionEnd = m_selectionStart;
         update();
     } else if (event->button() == Qt::MiddleButton && m_pasteOnMiddleClick) {
@@ -548,13 +608,67 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
 }
 
 void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
+    VTermModifier mod = VTERM_MOD_NONE;
+    if (event->modifiers() & Qt::ShiftModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
+    }
+    if (event->modifiers() & Qt::ControlModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
+    }
+    if (event->modifiers() & Qt::AltModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
+    }
+
+    VTermPos vpos = mouseToPos(event->pos());
+    int screenRow = event->pos().y() / m_cellSize.height();
+    int screenCol = event->pos().x() / m_cellSize.width();
+
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
+        vterm_screen_flush_damage(m_vtermScreen);
+        return;
+    }
+
     if (m_selecting) {
-        m_selectionEnd = mouseToPos(event->pos());
+        m_selectionEnd = vpos;
         update();
     }
 }
 
 void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
+    VTermModifier mod = VTERM_MOD_NONE;
+    if (event->modifiers() & Qt::ShiftModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
+    }
+    if (event->modifiers() & Qt::ControlModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
+    }
+    if (event->modifiers() & Qt::AltModifier) {
+        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
+    }
+
+    VTermPos vpos = mouseToPos(event->pos());
+    int screenRow = event->pos().y() / m_cellSize.height();
+    int screenCol = event->pos().x() / m_cellSize.width();
+
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        int button = 0;
+        if (event->button() == Qt::LeftButton) {
+            button = 1;
+        } else if (event->button() == Qt::MiddleButton) {
+            button = 2;
+        } else if (event->button() == Qt::RightButton) {
+            button = 3;
+        }
+
+        if (button > 0) {
+            vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
+            vterm_mouse_button(m_vterm, button, false, mod);
+            vterm_screen_flush_damage(m_vtermScreen);
+            return;
+        }
+    }
+
     if (event->button() == Qt::LeftButton && m_selecting) {
         m_selecting = false;
         m_selectionEnd = mouseToPos(event->pos());
@@ -693,6 +807,9 @@ void KodoTerm::openFileBrowser() {
 }
 
 void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
+    if (m_mouseMode > 0 && !(QGuiApplication::keyboardModifiers() & Qt::ShiftModifier)) {
+        return;
+    }
     auto *menu = new QMenu(this);
 
     auto *copyAction = menu->addAction(tr("Copy"), this, &KodoTerm::copyToClipboard);

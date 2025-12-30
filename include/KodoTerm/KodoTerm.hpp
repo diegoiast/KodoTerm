@@ -136,6 +136,7 @@ class KodoTerm : public QWidget {
     int m_cursorShape = 1; // VTERM_PROP_CURSORSHAPE_BLOCK
     bool m_cursorBlinkState = true;
     bool m_altScreen = false;
+    int m_mouseMode = 0; // VTERM_PROP_MOUSE_NONE
     QTimer *m_cursorBlinkTimer = nullptr;
 
     QScrollBar *m_scrollBar = nullptr;
