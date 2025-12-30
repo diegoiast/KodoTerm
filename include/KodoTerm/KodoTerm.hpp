@@ -4,8 +4,11 @@
 #pragma once
 
 #include <QFont>
+#include <QScrollBar>
 #include <QSocketNotifier>
 #include <QWidget>
+#include <deque>
+#include <vector>
 #include <vterm.h>
 
 class PtyProcess;
@@ -21,10 +24,16 @@ class KodoTerm : public QWidget {
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
     bool focusNextPrevChild(bool next) override; // To capture Tab
 
-  private slots:
+  public slots:
     void onPtyReadyRead(const QByteArray &data);
+    void onScrollValueChanged(int value);
+    void scrollUp(int lines = 1);
+    void scrollDown(int lines = 1);
+    void pageUp();
+    void pageDown();
 
   private:
     void setupPty();
@@ -34,6 +43,19 @@ class KodoTerm : public QWidget {
     // VTerm callbacks
     static int onDamage(VTermRect rect, void *user);
     static int onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user);
+    static int onSbPushLine(int cols, const VTermScreenCell *cells, void *user);
+    static int onSbPopLine(int cols, VTermScreenCell *cells, void *user);
+
+    int pushScrollback(int cols, const VTermScreenCell *cells);
+    int popScrollback(int cols, VTermScreenCell *cells);
+
+    struct SavedCell {
+        uint32_t chars[VTERM_MAX_CHARS_PER_CELL];
+        VTermScreenCellAttrs attrs;
+        VTermColor fg, bg;
+        int width;
+    };
+    using SavedLine = std::vector<SavedCell>;
 
     PtyProcess *m_pty = nullptr;
     VTerm *m_vterm = nullptr;
@@ -45,4 +67,8 @@ class KodoTerm : public QWidget {
     int m_cursorRow = 0;
     int m_cursorCol = 0;
     bool m_cursorVisible = true;
+
+    QScrollBar *m_scrollBar = nullptr;
+    std::deque<SavedLine> m_scrollback;
+    int m_maxScrollback = 1000;
 };

@@ -41,6 +41,10 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 
     setFocusPolicy(Qt::StrongFocus);
 
+    m_scrollBar = new QScrollBar(Qt::Vertical, this);
+    m_scrollBar->setRange(0, 0);
+    connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
+
     m_vterm = vterm_new(25, 80);
     if (!m_vterm) {
         return;
@@ -59,8 +63,8 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
                                              .settermprop = nullptr,
                                              .bell = nullptr,
                                              .resize = nullptr,
-                                             .sb_pushline = nullptr,
-                                             .sb_popline = nullptr,
+                                             .sb_pushline = &KodoTerm::onSbPushLine,
+                                             .sb_popline = &KodoTerm::onSbPopLine,
                                              .sb_clear = nullptr,
                                              .sb_pushline4 = nullptr};
 
@@ -115,13 +119,81 @@ void KodoTerm::onPtyReadyRead(const QByteArray &data) {
     }
 }
 
+void KodoTerm::onScrollValueChanged(int value) { update(); }
+
+void KodoTerm::scrollUp(int lines) { m_scrollBar->setValue(m_scrollBar->value() - lines); }
+
+void KodoTerm::scrollDown(int lines) { m_scrollBar->setValue(m_scrollBar->value() + lines); }
+
+void KodoTerm::pageUp() { scrollUp(m_scrollBar->pageStep()); }
+
+void KodoTerm::pageDown() { scrollDown(m_scrollBar->pageStep()); }
+
+int KodoTerm::onSbPushLine(int cols, const VTermScreenCell *cells, void *user) {
+    auto *widget = static_cast<KodoTerm *>(user);
+    return widget->pushScrollback(cols, cells);
+}
+
+int KodoTerm::onSbPopLine(int cols, VTermScreenCell *cells, void *user) {
+    auto *widget = static_cast<KodoTerm *>(user);
+    return widget->popScrollback(cols, cells);
+}
+
+int KodoTerm::pushScrollback(int cols, const VTermScreenCell *cells) {
+    SavedLine line;
+    line.reserve(cols);
+    for (int i = 0; i < cols; ++i) {
+        SavedCell sc;
+        memcpy(sc.chars, cells[i].chars, sizeof(sc.chars));
+        sc.attrs = cells[i].attrs;
+        sc.fg = cells[i].fg;
+        sc.bg = cells[i].bg;
+        sc.width = cells[i].width;
+        line.push_back(sc);
+    }
+    m_scrollback.push_back(std::move(line));
+
+    if ((int)m_scrollback.size() > m_maxScrollback) {
+        m_scrollback.pop_front();
+    }
+
+    bool atBottom = m_scrollBar->value() == m_scrollBar->maximum();
+    m_scrollBar->setRange(0, (int)m_scrollback.size());
+    if (atBottom) {
+        m_scrollBar->setValue(m_scrollBar->maximum());
+    }
+
+    return 1;
+}
+
+int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
+    if (m_scrollback.empty()) {
+        return 0;
+    }
+
+    const SavedLine &line = m_scrollback.back();
+    int to_copy = std::min(cols, (int)line.size());
+    for (int i = 0; i < to_copy; ++i) {
+        memcpy(cells[i].chars, line[i].chars, sizeof(cells[i].chars));
+        cells[i].attrs = line[i].attrs;
+        cells[i].fg = line[i].fg;
+        cells[i].bg = line[i].bg;
+        cells[i].width = line[i].width;
+    }
+
+    m_scrollback.pop_back();
+    m_scrollBar->setRange(0, (int)m_scrollback.size());
+
+    return 1;
+}
+
 void KodoTerm::updateTerminalSize() {
     if (m_cellSize.isEmpty()) {
         return;
     }
 
     int rows = height() / m_cellSize.height();
-    int cols = width() / m_cellSize.width();
+    int cols = (width() - m_scrollBar->sizeHint().width()) / m_cellSize.width();
 
     if (rows <= 0) {
         rows = 1;
@@ -129,6 +201,8 @@ void KodoTerm::updateTerminalSize() {
     if (cols <= 0) {
         cols = 1;
     }
+
+    m_scrollBar->setPageStep(rows);
 
     if (m_vterm) {
         vterm_set_size(m_vterm, rows, cols);
@@ -148,6 +222,14 @@ void KodoTerm::updateTerminalSize() {
 
 int KodoTerm::onDamage(VTermRect rect, void *user) {
     auto *widget = static_cast<KodoTerm *>(user);
+    int scrollbackLines = (int)widget->m_scrollback.size();
+    int currentScrollPos = widget->m_scrollBar->value();
+
+    if (currentScrollPos < scrollbackLines) {
+        widget->update();
+        return 1;
+    }
+
     int w = widget->m_cellSize.width();
     int h = widget->m_cellSize.height();
     widget->update(rect.start_col * w, rect.start_row * h, (rect.end_col - rect.start_col) * w,
@@ -160,14 +242,23 @@ int KodoTerm::onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *use
     widget->m_cursorRow = pos.row;
     widget->m_cursorCol = pos.col;
     widget->m_cursorVisible = visible;
-    widget->update();
+
+    int scrollbackLines = (int)widget->m_scrollback.size();
+    int currentScrollPos = widget->m_scrollBar->value();
+    if (currentScrollPos == scrollbackLines) {
+        widget->update();
+    }
     return 1;
 }
 
 void KodoTerm::resizeEvent(QResizeEvent *event) {
+    int sbWidth = m_scrollBar->sizeHint().width();
+    m_scrollBar->setGeometry(width() - sbWidth, 0, sbWidth, height());
     updateTerminalSize();
     QWidget::resizeEvent(event);
 }
+
+void KodoTerm::wheelEvent(QWheelEvent *event) { m_scrollBar->event(event); }
 
 void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell) {
     auto mapColor = [](const VTermColor &c, const VTermState *state) -> QColor {
@@ -220,15 +311,34 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
     int rows, cols;
     vterm_get_size(m_vterm, &rows, &cols);
 
+    int scrollbackLines = (int)m_scrollback.size();
+    int currentScrollPos = m_scrollBar->value();
+
     for (int row = 0; row < rows; ++row) {
-        for (int col = 0; col < cols; ++col) {
-            VTermScreenCell cell;
-            vterm_screen_get_cell(m_vtermScreen, {row, col}, &cell);
-            drawCell(painter, row, col, cell);
+        int absoluteRow = currentScrollPos + row;
+        if (absoluteRow < scrollbackLines) {
+            const SavedLine &line = m_scrollback[absoluteRow];
+            for (int col = 0; col < (int)line.size() && col < cols; ++col) {
+                VTermScreenCell cell;
+                const SavedCell &sc = line[col];
+                memcpy(cell.chars, sc.chars, sizeof(cell.chars));
+                cell.attrs = sc.attrs;
+                cell.fg = sc.fg;
+                cell.bg = sc.bg;
+                cell.width = sc.width;
+                drawCell(painter, row, col, cell);
+            }
+        } else {
+            int vtermRow = absoluteRow - scrollbackLines;
+            for (int col = 0; col < cols; ++col) {
+                VTermScreenCell cell;
+                vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
+                drawCell(painter, row, col, cell);
+            }
         }
     }
 
-    if (m_cursorVisible) {
+    if (m_cursorVisible && currentScrollPos == scrollbackLines) {
         QRect cursorRect(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(),
                          m_cellSize.width(), m_cellSize.height());
         painter.setCompositionMode(QPainter::CompositionMode_Difference);
@@ -279,6 +389,20 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
             break;
         case Qt::Key_Right:
             vterm_keyboard_key(m_vterm, VTERM_KEY_RIGHT, mod);
+            break;
+        case Qt::Key_PageUp:
+            if (event->modifiers() & Qt::ShiftModifier) {
+                pageUp();
+            } else {
+                vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEUP, mod);
+            }
+            break;
+        case Qt::Key_PageDown:
+            if (event->modifiers() & Qt::ShiftModifier) {
+                pageDown();
+            } else {
+                vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, mod);
+            }
             break;
         default:
             if ((mod & VTERM_MOD_CTRL) && key >= Qt::Key_A && key <= Qt::Key_Z) {
