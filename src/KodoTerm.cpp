@@ -14,6 +14,10 @@
 #include <unistd.h>
 #include <vterm.h>
 
+#include <QApplication>
+#include <QClipboard>
+#include <QMouseEvent>
+
 static void output_callback(const char *s, size_t len, void *user) {
     int fd = *static_cast<int *>(user);
     if (fd >= 0) {
@@ -258,9 +262,259 @@ void KodoTerm::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
 }
 
-void KodoTerm::wheelEvent(QWheelEvent *event) { m_scrollBar->event(event); }
+void KodoTerm::wheelEvent(QWheelEvent *event) {
 
-void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell) {
+    m_scrollBar->event(event);
+
+}
+
+
+
+void KodoTerm::mousePressEvent(QMouseEvent *event) {
+
+    if (event->button() == Qt::LeftButton) {
+
+        m_selecting = true;
+
+        m_selectionStart = mouseToPos(event->pos());
+
+        m_selectionEnd = m_selectionStart;
+
+        update();
+
+    }
+
+}
+
+
+
+void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
+
+    if (m_selecting) {
+
+        m_selectionEnd = mouseToPos(event->pos());
+
+        update();
+
+    }
+
+}
+
+
+
+void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
+
+    if (event->button() == Qt::LeftButton && m_selecting) {
+
+        m_selecting = false;
+
+        m_selectionEnd = mouseToPos(event->pos());
+
+        if (m_selectionStart.row == m_selectionEnd.row && m_selectionStart.col == m_selectionEnd.col) {
+
+            m_selectionStart = {-1, -1};
+
+            m_selectionEnd = {-1, -1};
+
+        }
+
+        update();
+
+    }
+
+}
+
+
+
+VTermPos KodoTerm::mouseToPos(const QPoint &pos) const {
+
+    int row = pos.y() / m_cellSize.height();
+
+    int col = pos.x() / m_cellSize.width();
+
+
+
+    int scrollbackLines = (int)m_scrollback.size();
+
+    int currentScrollPos = m_scrollBar->value();
+
+
+
+    VTermPos vpos;
+
+    vpos.row = currentScrollPos + row;
+
+    vpos.col = col;
+
+    return vpos;
+
+}
+
+
+
+bool KodoTerm::isSelected(int row, int col) const {
+
+    if (m_selectionStart.row == -1) {
+
+        return false;
+
+    }
+
+
+
+    VTermPos start = m_selectionStart;
+
+    VTermPos end = m_selectionEnd;
+
+
+
+    if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
+
+        std::swap(start, end);
+
+    }
+
+
+
+    if (row < start.row || row > end.row) {
+
+        return false;
+
+    }
+
+
+
+    if (row == start.row && row == end.row) {
+
+        return col >= start.col && col <= end.col;
+
+    }
+
+
+
+    if (row == start.row) {
+
+        return col >= start.col;
+
+    }
+
+
+
+    if (row == end.row) {
+
+        return col <= end.col;
+
+    }
+
+
+
+    return true;
+
+}
+
+
+
+QString KodoTerm::getTextRange(VTermPos start, VTermPos end) {
+
+    if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
+
+        std::swap(start, end);
+
+    }
+
+
+
+    QString text;
+
+    int scrollbackLines = (int)m_scrollback.size();
+
+
+
+    int rows, cols;
+
+    vterm_get_size(m_vterm, &rows, &cols);
+
+
+
+    for (int r = start.row; r <= end.row; ++r) {
+
+        int startCol = (r == start.row) ? start.col : 0;
+
+        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large number
+
+
+
+        if (r < scrollbackLines) {
+
+            const SavedLine &line = m_scrollback[r];
+
+            for (int c = startCol; c <= endCol && c < (int)line.size(); ++c) {
+
+                for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && line[c].chars[i]; ++i) {
+
+                    text.append(QChar::fromUcs4(line[c].chars[i]));
+
+                }
+
+            }
+
+        } else {
+
+            int vtermRow = r - scrollbackLines;
+
+            if (vtermRow < rows) {
+
+                for (int c = startCol; c <= endCol && c < cols; ++c) {
+
+                    VTermScreenCell cell;
+
+                    vterm_screen_get_cell(m_vtermScreen, {vtermRow, c}, &cell);
+
+                    for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; ++i) {
+
+                        text.append(QChar::fromUcs4(cell.chars[i]));
+
+                    }
+
+                }
+
+            }
+
+        }
+
+        if (r < end.row) {
+
+            text.append('\n');
+
+        }
+
+    }
+
+    return text;
+
+}
+
+
+
+void KodoTerm::copyToClipboard() {
+
+    if (m_selectionStart.row == -1) {
+
+        return;
+
+    }
+
+    QString text = getTextRange(m_selectionStart, m_selectionEnd);
+
+    QApplication::clipboard()->setText(text);
+
+}
+
+
+
+void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected) {
+
+
     auto mapColor = [](const VTermColor &c, const VTermState *state) -> QColor {
         if (VTERM_COLOR_IS_RGB(&c)) {
             return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);
@@ -284,7 +538,7 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
         bg = mapColor(cell.bg, state);
     }
 
-    if (cell.attrs.reverse) {
+    if (cell.attrs.reverse ^ selected) {
         std::swap(fg, bg);
     }
 
@@ -326,14 +580,14 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
                 cell.fg = sc.fg;
                 cell.bg = sc.bg;
                 cell.width = sc.width;
-                drawCell(painter, row, col, cell);
+                drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
             }
         } else {
             int vtermRow = absoluteRow - scrollbackLines;
             for (int col = 0; col < cols; ++col) {
                 VTermScreenCell cell;
                 vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
-                drawCell(painter, row, col, cell);
+                drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
             }
         }
     }
@@ -405,6 +659,19 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
             }
             break;
         default:
+            if ((event->modifiers() & Qt::ControlModifier) && (event->modifiers() & Qt::ShiftModifier)) {
+                if (key == Qt::Key_C) {
+                    copyToClipboard();
+                    return;
+                } else if (key == Qt::Key_V) {
+                    QString text = QApplication::clipboard()->text();
+                    if (!text.isEmpty()) {
+                        m_pty->write(text.toUtf8());
+                    }
+                    return;
+                }
+            }
+
             if ((mod & VTERM_MOD_CTRL) && key >= Qt::Key_A && key <= Qt::Key_Z) {
                 int charCode = key - Qt::Key_A + 1;
                 vterm_keyboard_unichar(m_vterm, charCode, VTERM_MOD_NONE);

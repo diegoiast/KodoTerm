@@ -25,6 +25,9 @@ class KodoTerm : public QWidget {
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     bool focusNextPrevChild(bool next) override; // To capture Tab
 
   public slots:
@@ -34,11 +37,15 @@ class KodoTerm : public QWidget {
     void scrollDown(int lines = 1);
     void pageUp();
     void pageDown();
+    void copyToClipboard();
 
   private:
     void setupPty();
     void updateTerminalSize();
-    void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell);
+    void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected);
+    QString getTextRange(VTermPos start, VTermPos end);
+    bool isSelected(int row, int col) const;
+    VTermPos mouseToPos(const QPoint &pos) const;
 
     // VTerm callbacks
     static int onDamage(VTermRect rect, void *user);
@@ -71,4 +78,8 @@ class KodoTerm : public QWidget {
     QScrollBar *m_scrollBar = nullptr;
     std::deque<SavedLine> m_scrollback;
     int m_maxScrollback = 1000;
+
+    bool m_selecting = false;
+    VTermPos m_selectionStart = {-1, -1};
+    VTermPos m_selectionEnd = {-1, -1};
 };
