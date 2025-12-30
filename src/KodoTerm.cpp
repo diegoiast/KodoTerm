@@ -16,6 +16,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QMenu>
 #include <QMouseEvent>
 
 static void output_callback(const char *s, size_t len, void *user) {
@@ -328,6 +329,8 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
         m_selectionStart = mouseToPos(event->pos());
         m_selectionEnd = m_selectionStart;
         update();
+    } else if (event->button() == Qt::MiddleButton && m_pasteOnMiddleClick) {
+        pasteFromClipboard();
     }
 }
 
@@ -438,10 +441,72 @@ void KodoTerm::copyToClipboard() {
     QApplication::clipboard()->setText(text);
 }
 
+void KodoTerm::pasteFromClipboard() {
+    QString text = QApplication::clipboard()->text();
+    if (!text.isEmpty()) {
+        m_pty->write(text.toUtf8());
+    }
+}
+
+void KodoTerm::selectAll() {
+    int rows, cols;
+    vterm_get_size(m_vterm, &rows, &cols);
+    int scrollbackLines = (int)m_scrollback.size();
+
+    m_selectionStart = {0, 0};
+    m_selectionEnd = {scrollbackLines + rows - 1, cols - 1};
+    update();
+}
+
+void KodoTerm::clearScrollback() {
+    m_scrollback.clear();
+    m_scrollBar->setRange(0, 0);
+    m_scrollBar->setValue(0);
+    update();
+}
+
+void KodoTerm::resetTerminal() {
+    vterm_screen_reset(m_vtermScreen, 1);
+    clearScrollback();
+}
+
+void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
+    auto *menu = new QMenu(this);
+
+    auto *copyAction = menu->addAction(tr("Copy"), this, &KodoTerm::copyToClipboard);
+    copyAction->setEnabled(m_selectionStart.row != -1);
+    copyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+
+    auto *pasteAction = menu->addAction(tr("Paste"), this, &KodoTerm::pasteFromClipboard);
+    pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
+    pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
+
+    menu->addSeparator();
+
+    menu->addAction(tr("Select All"), this, &KodoTerm::selectAll);
+
+    menu->addSeparator();
+
+    menu->addAction(tr("Clear Scrollback"), this, &KodoTerm::clearScrollback);
+    menu->addAction(tr("Reset"), this, &KodoTerm::resetTerminal);
+
+    menu->addSeparator();
+
+    menu->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn);
+    menu->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut);
+    menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
+
+    emit contextMenuRequested(menu, event->globalPos());
+
+    menu->exec(event->globalPos());
+    delete menu;
+}
+
 void KodoTerm::zoomIn() {
     qreal size = m_font.pointSizeF();
-    if (size <= 0)
+    if (size <= 0) {
         size = m_font.pointSize();
+    }
     m_font.setPointSizeF(size + 1.0);
     updateTerminalSize();
     update();
@@ -449,8 +514,9 @@ void KodoTerm::zoomIn() {
 
 void KodoTerm::zoomOut() {
     qreal size = m_font.pointSizeF();
-    if (size <= 0)
+    if (size <= 0) {
         size = m_font.pointSize();
+    }
     if (size > 1.0) {
         m_font.setPointSizeF(size - 1.0);
         updateTerminalSize();
@@ -618,30 +684,28 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
                 vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, mod);
             }
             break;
-                default:
-                    if (event->modifiers() & Qt::ControlModifier) {
-                        if (key == Qt::Key_Plus || key == Qt::Key_Equal) {
-                            zoomIn();
-                            return;
-                        } else if (key == Qt::Key_Minus) {
-                            zoomOut();
-                            return;
-                        } else if (key == Qt::Key_0) {
-                            resetZoom();
-                            return;
-                        }
-                    }
-        
-                    if ((event->modifiers() & Qt::ControlModifier) && (event->modifiers() & Qt::ShiftModifier)) {
-        
+        default:
+            if (event->modifiers() & Qt::ControlModifier) {
+                if (key == Qt::Key_Plus || key == Qt::Key_Equal) {
+                    zoomIn();
+                    return;
+                } else if (key == Qt::Key_Minus) {
+                    zoomOut();
+                    return;
+                } else if (key == Qt::Key_0) {
+                    resetZoom();
+                    return;
+                }
+            }
+
+            if ((event->modifiers() & Qt::ControlModifier) &&
+                (event->modifiers() & Qt::ShiftModifier)) {
+
                 if (key == Qt::Key_C) {
                     copyToClipboard();
                     return;
                 } else if (key == Qt::Key_V) {
-                    QString text = QApplication::clipboard()->text();
-                    if (!text.isEmpty()) {
-                        m_pty->write(text.toUtf8());
-                    }
+                    pasteFromClipboard();
                     return;
                 }
             }

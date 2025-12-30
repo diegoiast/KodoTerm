@@ -7,7 +7,7 @@
 2. Interactive Features
    2.1. URL Detection: Scan text for URLs and make them clickable (Ctrl + Click).
    2.2. Search Functionality: A search bar (Ctrl+F) to find text in visible area and scrollback.
-   2.3. Right-Click Context Menu: Menu with Copy, Paste, Select All, Clear Scrollback, and Reset Terminal.
+   2.3. Right-Click Context Menu: Menu with Copy, Paste, Select All, Clear Scrollback, and Reset Terminal. (Initial implementation done)
 
 3. Advanced Terminal Capabilities
    3.1. OSC Sequence Support: Handle escape sequences for window title, CWD, and dynamic colors. (Title support started)

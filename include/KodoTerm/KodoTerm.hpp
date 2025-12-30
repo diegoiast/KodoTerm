@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QFont>
+#include <QMenu>
 #include <QScrollBar>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -29,7 +30,11 @@ class KodoTerm : public QWidget {
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
     bool focusNextPrevChild(bool next) override; // To capture Tab
+
+  signals:
+    void contextMenuRequested(QMenu *menu, const QPoint &pos);
 
   public slots:
     void onPtyReadyRead(const QByteArray &data);
@@ -39,6 +44,10 @@ class KodoTerm : public QWidget {
     void pageUp();
     void pageDown();
     void copyToClipboard();
+    void pasteFromClipboard();
+    void selectAll();
+    void clearScrollback();
+    void resetTerminal();
 
     void zoomIn();
     void zoomOut();
