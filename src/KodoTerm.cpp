@@ -40,17 +40,11 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
 }
 
 static VTermColor toVTermColor(const QColor &c) {
-
     VTermColor vc;
-
     vc.type = VTERM_COLOR_RGB;
-
     vc.rgb.red = c.red();
-
     vc.rgb.green = c.green();
-
     vc.rgb.blue = c.blue();
-
     return vc;
 }
 
@@ -229,7 +223,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
                                              .moverect = nullptr,
                                              .movecursor = &KodoTerm::onMoveCursor,
                                              .settermprop = &KodoTerm::onSetTermProp,
-                                             .bell = nullptr,
+                                             .bell = &KodoTerm::onBell,
                                              .resize = nullptr,
                                              .sb_pushline = &KodoTerm::onSbPushLine,
                                              .sb_popline = &KodoTerm::onSbPopLine,
@@ -511,6 +505,22 @@ int KodoTerm::onSetTermProp(VTermProp prop, VTermValue *val, void *user) {
         break;
     }
     widget->update();
+    return 1;
+}
+
+int KodoTerm::onBell(void *user) {
+    auto *widget = static_cast<KodoTerm *>(user);
+    if (widget->m_audibleBell) {
+        QApplication::beep();
+    }
+    if (widget->m_visualBell) {
+        widget->m_visualBellActive = true;
+        widget->update();
+        QTimer::singleShot(100, widget, [widget]() {
+            widget->m_visualBellActive = false;
+            widget->update();
+        });
+    }
     return 1;
 }
 
@@ -860,6 +870,12 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
             painter.fillRect(cursorRect, Qt::white);
             break;
         }
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    }
+
+    if (m_visualBellActive) {
+        painter.setCompositionMode(QPainter::CompositionMode_Difference);
+        painter.fillRect(rect(), Qt::white);
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     }
 }

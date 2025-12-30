@@ -22,27 +22,16 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat {
-
-        Konsole,
-
-        WindowsTerminal
-
-    };
+    enum class ThemeFormat { Konsole, WindowsTerminal };
 
     struct ThemeInfo {
-
         QString name;
-
         QString path;
-
         ThemeFormat format;
     };
 
     static TerminalTheme loadKonsoleTheme(const QString &path);
-
     static TerminalTheme loadWindowsTerminalTheme(const QString &path);
-
     static QList<ThemeInfo> builtInThemes();
 };
 
@@ -95,9 +84,12 @@ class KodoTerm : public QWidget {
 
     bool pasteOnMiddleClick() const { return m_pasteOnMiddleClick; }
     void setPasteOnMiddleClick(bool enable) { m_pasteOnMiddleClick = enable; }
-
     bool mouseWheelZoom() const { return m_mouseWheelZoom; }
     void setMouseWheelZoom(bool enable) { m_mouseWheelZoom = enable; }
+    bool visualBell() const { return m_visualBell; }
+    void setVisualBell(bool enable) { m_visualBell = enable; }
+    bool audibleBell() const { return m_audibleBell; }
+    void setAudibleBell(bool enable) { m_audibleBell = enable; }
 
   private:
     void setupPty();
@@ -114,6 +106,7 @@ class KodoTerm : public QWidget {
     static int onDamage(VTermRect rect, void *user);
     static int onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user);
     static int onSetTermProp(VTermProp prop, VTermValue *val, void *user);
+    static int onBell(void *user);
     static int onSbPushLine(int cols, const VTermScreenCell *cells, void *user);
     static int onSbPopLine(int cols, VTermScreenCell *cells, void *user);
     static int onOsc(int command, VTermStringFragment frag, void *user);
@@ -159,6 +152,9 @@ class KodoTerm : public QWidget {
 #endif
     bool m_pasteOnMiddleClick = true;
     bool m_mouseWheelZoom = true;
+    bool m_visualBell = true;
+    bool m_audibleBell = true;
+    bool m_visualBellActive = false;
     QString m_cwd;
     QByteArray m_oscBuffer;
 };
