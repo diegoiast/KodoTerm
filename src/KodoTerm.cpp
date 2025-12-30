@@ -8,7 +8,6 @@
 #include <QKeyEvent>
 
 #include <vterm.h>
-#include <pty.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
