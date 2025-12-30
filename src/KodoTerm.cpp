@@ -25,13 +25,6 @@
 #include <QTextStream>
 #include <QUrl>
 
-static void output_callback(const char *s, size_t len, void *user) {
-    int fd = *static_cast<int *>(user);
-    if (fd >= 0) {
-        ::write(fd, s, len);
-    }
-}
-
 static void vterm_output_callback(const char *s, size_t len, void *user) {
     auto *pty = static_cast<PtyProcess *>(user);
     if (pty) {
@@ -935,6 +928,26 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
             } else {
                 vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, mod);
             }
+            break;
+        case Qt::Key_Home:
+            if (event->modifiers() & Qt::ShiftModifier) {
+                m_scrollBar->setValue(m_scrollBar->minimum());
+            } else {
+                vterm_keyboard_key(m_vterm, VTERM_KEY_HOME, mod);
+            }
+            break;
+        case Qt::Key_End:
+            if (event->modifiers() & Qt::ShiftModifier) {
+                m_scrollBar->setValue(m_scrollBar->maximum());
+            } else {
+                vterm_keyboard_key(m_vterm, VTERM_KEY_END, mod);
+            }
+            break;
+        case Qt::Key_Insert:
+            vterm_keyboard_key(m_vterm, VTERM_KEY_INS, mod);
+            break;
+        case Qt::Key_Delete:
+            vterm_keyboard_key(m_vterm, VTERM_KEY_DEL, mod);
             break;
         default:
             if (event->modifiers() & Qt::ControlModifier) {
