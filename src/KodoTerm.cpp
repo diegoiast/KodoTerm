@@ -15,9 +15,19 @@
 #include <vterm.h>
 
 #include <QApplication>
+#include <QBuffer>
 #include <QClipboard>
+#include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMap>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QSettings>
+#include <QTextStream>
 #include <QUrl>
 
 static void output_callback(const char *s, size_t len, void *user) {
@@ -32,6 +42,176 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
     if (pty) {
         pty->write(QByteArray(s, (int)len));
     }
+}
+
+static VTermColor toVTermColor(const QColor &c) {
+    VTermColor vc;
+    vc.type = VTERM_COLOR_RGB;
+    vc.rgb.red = c.red();
+    vc.rgb.green = c.green();
+    vc.rgb.blue = c.blue();
+    return vc;
+}
+
+TerminalTheme TerminalTheme::breezeDark() {
+    return {"Breeze Dark",
+            QColor(252, 252, 252),
+            QColor(35, 38, 39),
+            {QColor(35, 38, 39), QColor(237, 21, 21), QColor(17, 209, 22), QColor(246, 116, 0),
+             QColor(29, 153, 243), QColor(155, 89, 182), QColor(26, 188, 156), QColor(252, 252, 252),
+             QColor(127, 140, 141), QColor(192, 57, 43), QColor(28, 220, 154), QColor(253, 188, 75),
+             QColor(61, 174, 233), QColor(142, 68, 173), QColor(22, 160, 133),
+             QColor(255, 255, 255)}};
+}
+
+TerminalTheme TerminalTheme::solarizedDark() {
+    return {"Solarized Dark",
+            QColor(131, 148, 150),
+            QColor(0, 43, 54),
+            {QColor(7, 54, 66), QColor(220, 50, 47), QColor(133, 153, 0), QColor(181, 137, 0),
+             QColor(38, 139, 210), QColor(211, 54, 130), QColor(42, 161, 152), QColor(238, 232, 213),
+             QColor(0, 43, 54), QColor(203, 75, 22), QColor(88, 110, 117), QColor(101, 123, 131),
+             QColor(131, 148, 150), QColor(108, 113, 196), QColor(147, 161, 161),
+             QColor(253, 246, 227)}};
+}
+
+TerminalTheme TerminalTheme::retroGreen() {
+    return {"Retro Green",
+            QColor(0, 255, 0),
+            QColor(0, 0, 0),
+            {QColor(0, 0, 0), QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0),
+             QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0),
+             QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85),
+             QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85)}};
+}
+
+TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
+    TerminalTheme theme;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return theme;
+    }
+
+    theme.name = QFileInfo(path).baseName();
+
+    auto parseColor = [](const QString &s) -> QColor {
+        QStringList parts = s.split(',');
+        if (parts.size() >= 3) {
+            return QColor(parts[0].toInt(), parts[1].toInt(), parts[2].toInt());
+        }
+        return QColor();
+    };
+
+    QMap<QString, QMap<QString, QString>> sections;
+    QString currentSection;
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith(';'))
+            continue;
+        if (line.startsWith('[') && line.endsWith(']')) {
+            currentSection = line.mid(1, line.length() - 2);
+        } else if (!currentSection.isEmpty()) {
+            int eq = line.indexOf('=');
+            if (eq != -1) {
+                QString key = line.left(eq).trimmed();
+                QString value = line.mid(eq + 1).trimmed();
+                sections[currentSection][key] = value;
+            }
+        }
+    }
+
+    if (sections.contains("General") && sections["General"].contains("Description")) {
+        theme.name = sections["General"]["Description"];
+    }
+
+    theme.foreground = parseColor(sections["Foreground"]["Color"]);
+    if (!theme.foreground.isValid())
+        theme.foreground = Qt::white;
+
+    theme.background = parseColor(sections["Background"]["Color"]);
+    if (!theme.background.isValid())
+        theme.background = Qt::black;
+
+    for (int i = 0; i < 16; ++i) {
+        QString section = QString("Color%1%2").arg(i % 8).arg(i >= 8 ? "Intense" : "");
+        theme.palette[i] = parseColor(sections[section]["Color"]);
+        if (!theme.palette[i].isValid()) {
+            theme.palette[i] = (i < 8) ? Qt::black : Qt::white;
+        }
+    }
+
+    return theme;
+}
+
+TerminalTheme TerminalTheme::loadWindowsTerminalTheme(const QString &path) {
+    TerminalTheme theme;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return theme;
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    QJsonObject obj = doc.object();
+
+    theme.name = obj.value("name").toString();
+    theme.foreground = QColor(obj.value("foreground").toString());
+    theme.background = QColor(obj.value("background").toString());
+
+    QStringList keys = {"black",       "red",          "green",        "yellow",
+                        "blue",        "purple",       "cyan",         "white",
+                        "brightBlack", "brightRed",    "brightGreen",  "brightYellow",
+                        "brightBlue",  "brightPurple", "brightCyan",   "brightWhite"};
+
+    for (int i = 0; i < 16; ++i) {
+        theme.palette[i] = QColor(obj.value(keys[i]).toString());
+    }
+
+    return theme;
+}
+
+QList<TerminalTheme::ThemeInfo> TerminalTheme::builtInThemes() {
+    Q_INIT_RESOURCE(themes);
+    QList<ThemeInfo> themes;
+    QDirIterator it(":/themes", QStringList() << "*.colorscheme" << "*.json", QDir::Files,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        ThemeInfo info;
+        info.path = it.filePath();
+        if (info.path.endsWith(".colorscheme")) {
+            info.format = ThemeFormat::Konsole;
+            QSettings settings(info.path, QSettings::IniFormat);
+            info.name = settings.value("General/Description", it.fileName()).toString();
+        } else {
+            info.format = ThemeFormat::WindowsTerminal;
+            QFile file(info.path);
+            if (file.open(QIODevice::ReadOnly)) {
+                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+                info.name = doc.object().value("name").toString();
+            }
+            if (info.name.isEmpty()) {
+                info.name = it.fileName();
+            }
+        }
+        themes.append(info);
+    }
+    std::sort(themes.begin(), themes.end(), [](const ThemeInfo &a, const ThemeInfo &b) {
+        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
+    });
+    return themes;
+}
+
+void KodoTerm::setTheme(const TerminalTheme &theme) {
+    VTermState *state = vterm_obtain_state(m_vterm);
+    VTermColor fg = toVTermColor(theme.foreground);
+    VTermColor bg = toVTermColor(theme.background);
+    vterm_state_set_default_colors(state, &fg, &bg);
+
+    for (int i = 0; i < 16; ++i) {
+        VTermColor c = toVTermColor(theme.palette[i]);
+        vterm_state_set_palette_color(state, i, &c);
+    }
+    update();
 }
 
 KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
@@ -511,6 +691,82 @@ void KodoTerm::resetTerminal() {
     clearScrollback();
 }
 
+void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
+                                 TerminalTheme::ThemeFormat format) {
+    QList<TerminalTheme::ThemeInfo> themes;
+    QStringList filters;
+    if (format == TerminalTheme::ThemeFormat::Konsole) {
+        filters << "*.colorscheme";
+    } else {
+        filters << "*.json";
+    }
+
+    QDirIterator it(dirPath, filters, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        TerminalTheme::ThemeInfo info;
+        info.path = it.filePath();
+        info.format = format;
+        if (format == TerminalTheme::ThemeFormat::Konsole) {
+            QFile file(info.path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                while (!in.atEnd()) {
+                    QString line = in.readLine().trimmed();
+                    if (line.startsWith("Description=", Qt::CaseInsensitive)) {
+                        info.name = line.mid(12).trimmed();
+                        break;
+                    }
+                }
+            }
+            if (info.name.isEmpty())
+                info.name = QFileInfo(info.path).baseName();
+        } else {
+            QFile file(info.path);
+            if (file.open(QIODevice::ReadOnly)) {
+                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+                info.name = doc.object().value("name").toString();
+            }
+            if (info.name.isEmpty())
+                info.name = QFileInfo(info.path).baseName();
+        }
+        themes.append(info);
+    }
+
+    std::sort(themes.begin(), themes.end(), [](const auto &a, const auto &b) {
+        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
+    });
+
+    auto addThemeAction = [this](QMenu *m, const TerminalTheme::ThemeInfo &info) {
+        m->addAction(info.name, this, [this, info]() {
+            if (info.format == TerminalTheme::ThemeFormat::Konsole) {
+                setTheme(TerminalTheme::loadKonsoleTheme(info.path));
+            } else {
+                setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
+            }
+        });
+    };
+
+    if (themes.size() < 26) {
+        for (const auto &info : themes) {
+            addThemeAction(parentMenu, info);
+        }
+    } else {
+        QMap<QString, QMenu *> subMenus;
+        for (const auto &info : themes) {
+            QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
+            if (!firstLetterChar.isLetter())
+                firstLetterChar = QChar('#');
+
+            QString firstLetter(firstLetterChar);
+            if (!subMenus.contains(firstLetter)) {
+                subMenus[firstLetter] = parentMenu->addMenu(firstLetter);
+            }
+            addThemeAction(subMenus[firstLetter], info);
+        }
+    }
+}
+
 void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     auto *menu = new QMenu(this);
 
@@ -536,6 +792,14 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     menu->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn);
     menu->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut);
     menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
+
+    menu->addSeparator();
+    auto *themesMenu = menu->addMenu(tr("Themes"));
+    auto *konsoleMenu = themesMenu->addMenu(tr("Konsole"));
+    auto *wtMenu = themesMenu->addMenu(tr("Windows Terminal"));
+
+    populateThemeMenu(konsoleMenu, ":/themes/konsole", TerminalTheme::ThemeFormat::Konsole);
+    populateThemeMenu(wtMenu, ":/themes/windowsterminal", TerminalTheme::ThemeFormat::WindowsTerminal);
 
     emit contextMenuRequested(menu, event->globalPos());
 

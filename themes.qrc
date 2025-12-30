@@ -1,0 +1,472 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/">
+    <file>themes/konsole/BlackOnLightYellow.colorscheme</file>
+    <file>themes/konsole/BlackOnRandomLight.colorscheme</file>
+    <file>themes/konsole/BlackOnWhite.colorscheme</file>
+    <file>themes/konsole/BlueOnBlack.colorscheme</file>
+    <file>themes/konsole/Breeze.colorscheme</file>
+    <file>themes/konsole/Campbell.colorscheme</file>
+    <file>themes/konsole/DarkPastels.colorscheme</file>
+    <file>themes/konsole/GreenOnBlack.colorscheme</file>
+    <file>themes/konsole/Linux.colorscheme</file>
+    <file>themes/konsole/RedOnBlack.colorscheme</file>
+    <file>themes/konsole/Solarized.colorscheme</file>
+    <file>themes/konsole/SolarizedLight.colorscheme</file>
+    <file>themes/konsole/WhiteOnBlack.colorscheme</file>
+    <file>themes/windowsterminal/0x96f.json</file>
+    <file>themes/windowsterminal/12-bit Rainbow.json</file>
+    <file>themes/windowsterminal/3024 Day.json</file>
+    <file>themes/windowsterminal/3024 Night.json</file>
+    <file>themes/windowsterminal/Aardvark Blue.json</file>
+    <file>themes/windowsterminal/Abernathy.json</file>
+    <file>themes/windowsterminal/Adventure Time.json</file>
+    <file>themes/windowsterminal/Adventure.json</file>
+    <file>themes/windowsterminal/Adwaita Dark.json</file>
+    <file>themes/windowsterminal/Adwaita.json</file>
+    <file>themes/windowsterminal/Afterglow.json</file>
+    <file>themes/windowsterminal/Aizen Dark.json</file>
+    <file>themes/windowsterminal/Aizen Light.json</file>
+    <file>themes/windowsterminal/Alabaster.json</file>
+    <file>themes/windowsterminal/Alien Blood.json</file>
+    <file>themes/windowsterminal/Andromeda.json</file>
+    <file>themes/windowsterminal/Apple Classic.json</file>
+    <file>themes/windowsterminal/Apple System Colors Light.json</file>
+    <file>themes/windowsterminal/Apple System Colors.json</file>
+    <file>themes/windowsterminal/Arcoiris.json</file>
+    <file>themes/windowsterminal/Ardoise.json</file>
+    <file>themes/windowsterminal/Argonaut.json</file>
+    <file>themes/windowsterminal/Arthur.json</file>
+    <file>themes/windowsterminal/Atelier Sulphurpool.json</file>
+    <file>themes/windowsterminal/Atom One Dark.json</file>
+    <file>themes/windowsterminal/Atom One Light.json</file>
+    <file>themes/windowsterminal/Atom.json</file>
+    <file>themes/windowsterminal/Aura.json</file>
+    <file>themes/windowsterminal/Aurora.json</file>
+    <file>themes/windowsterminal/Ayu Light.json</file>
+    <file>themes/windowsterminal/Ayu Mirage.json</file>
+    <file>themes/windowsterminal/Ayu.json</file>
+    <file>themes/windowsterminal/Banana Blueberry.json</file>
+    <file>themes/windowsterminal/Batman.json</file>
+    <file>themes/windowsterminal/Belafonte Day.json</file>
+    <file>themes/windowsterminal/Belafonte Night.json</file>
+    <file>themes/windowsterminal/Birds Of Paradise.json</file>
+    <file>themes/windowsterminal/Black Metal (Bathory).json</file>
+    <file>themes/windowsterminal/Black Metal (Burzum).json</file>
+    <file>themes/windowsterminal/Black Metal (Dark Funeral).json</file>
+    <file>themes/windowsterminal/Black Metal (Gorgoroth).json</file>
+    <file>themes/windowsterminal/Black Metal (Immortal).json</file>
+    <file>themes/windowsterminal/Black Metal (Khold).json</file>
+    <file>themes/windowsterminal/Black Metal (Marduk).json</file>
+    <file>themes/windowsterminal/Black Metal (Mayhem).json</file>
+    <file>themes/windowsterminal/Black Metal (Nile).json</file>
+    <file>themes/windowsterminal/Black Metal (Venom).json</file>
+    <file>themes/windowsterminal/Black Metal.json</file>
+    <file>themes/windowsterminal/Blazer.json</file>
+    <file>themes/windowsterminal/Blue Berry Pie.json</file>
+    <file>themes/windowsterminal/Blue Dolphin.json</file>
+    <file>themes/windowsterminal/Blue Matrix.json</file>
+    <file>themes/windowsterminal/Bluloco Dark.json</file>
+    <file>themes/windowsterminal/Bluloco Light.json</file>
+    <file>themes/windowsterminal/Borland.json</file>
+    <file>themes/windowsterminal/Box.json</file>
+    <file>themes/windowsterminal/Breadog.json</file>
+    <file>themes/windowsterminal/Breeze.json</file>
+    <file>themes/windowsterminal/Bright Lights.json</file>
+    <file>themes/windowsterminal/Broadcast.json</file>
+    <file>themes/windowsterminal/Brogrammer.json</file>
+    <file>themes/windowsterminal/Builtin Dark.json</file>
+    <file>themes/windowsterminal/Builtin Light.json</file>
+    <file>themes/windowsterminal/Builtin Pastel Dark.json</file>
+    <file>themes/windowsterminal/Builtin Tango Dark.json</file>
+    <file>themes/windowsterminal/Builtin Tango Light.json</file>
+    <file>themes/windowsterminal/C64.json</file>
+    <file>themes/windowsterminal/CGA.json</file>
+    <file>themes/windowsterminal/CLRS.json</file>
+    <file>themes/windowsterminal/Calamity.json</file>
+    <file>themes/windowsterminal/Campbell.json</file>
+    <file>themes/windowsterminal/Carbonfox.json</file>
+    <file>themes/windowsterminal/Catppuccin Frappe.json</file>
+    <file>themes/windowsterminal/Catppuccin Latte.json</file>
+    <file>themes/windowsterminal/Catppuccin Macchiato.json</file>
+    <file>themes/windowsterminal/Catppuccin Mocha.json</file>
+    <file>themes/windowsterminal/Chalk.json</file>
+    <file>themes/windowsterminal/Chalkboard.json</file>
+    <file>themes/windowsterminal/Challenger Deep.json</file>
+    <file>themes/windowsterminal/Chester.json</file>
+    <file>themes/windowsterminal/Ciapre.json</file>
+    <file>themes/windowsterminal/Citruszest.json</file>
+    <file>themes/windowsterminal/Cobalt Neon.json</file>
+    <file>themes/windowsterminal/Cobalt Next Dark.json</file>
+    <file>themes/windowsterminal/Cobalt Next Minimal.json</file>
+    <file>themes/windowsterminal/Cobalt Next.json</file>
+    <file>themes/windowsterminal/Cobalt2.json</file>
+    <file>themes/windowsterminal/Coffee Theme.json</file>
+    <file>themes/windowsterminal/Crayon Pony Fish.json</file>
+    <file>themes/windowsterminal/Cursor Dark.json</file>
+    <file>themes/windowsterminal/Cutie Pro.json</file>
+    <file>themes/windowsterminal/Cyberdyne.json</file>
+    <file>themes/windowsterminal/Cyberpunk Scarlet Protocol.json</file>
+    <file>themes/windowsterminal/Cyberpunk.json</file>
+    <file>themes/windowsterminal/Dark Modern.json</file>
+    <file>themes/windowsterminal/Dark Pastel.json</file>
+    <file>themes/windowsterminal/Dark+.json</file>
+    <file>themes/windowsterminal/Darkermatrix.json</file>
+    <file>themes/windowsterminal/Darkmatrix.json</file>
+    <file>themes/windowsterminal/Darkside.json</file>
+    <file>themes/windowsterminal/Dawnfox.json</file>
+    <file>themes/windowsterminal/Dayfox.json</file>
+    <file>themes/windowsterminal/Deep.json</file>
+    <file>themes/windowsterminal/Desert.json</file>
+    <file>themes/windowsterminal/Detuned.json</file>
+    <file>themes/windowsterminal/Dimidium.json</file>
+    <file>themes/windowsterminal/Dimmed Monokai.json</file>
+    <file>themes/windowsterminal/Django Reborn Again.json</file>
+    <file>themes/windowsterminal/Django Smooth.json</file>
+    <file>themes/windowsterminal/Django.json</file>
+    <file>themes/windowsterminal/Doom One.json</file>
+    <file>themes/windowsterminal/Doom Peacock.json</file>
+    <file>themes/windowsterminal/Dot Gov.json</file>
+    <file>themes/windowsterminal/Dracula+.json</file>
+    <file>themes/windowsterminal/Dracula.json</file>
+    <file>themes/windowsterminal/Duckbones.json</file>
+    <file>themes/windowsterminal/Duotone Dark.json</file>
+    <file>themes/windowsterminal/Duskfox.json</file>
+    <file>themes/windowsterminal/ENCOM.json</file>
+    <file>themes/windowsterminal/Earthsong.json</file>
+    <file>themes/windowsterminal/Electron Highlighter.json</file>
+    <file>themes/windowsterminal/Elegant.json</file>
+    <file>themes/windowsterminal/Elemental.json</file>
+    <file>themes/windowsterminal/Elementary.json</file>
+    <file>themes/windowsterminal/Embark.json</file>
+    <file>themes/windowsterminal/Embers Dark.json</file>
+    <file>themes/windowsterminal/Espresso Libre.json</file>
+    <file>themes/windowsterminal/Espresso.json</file>
+    <file>themes/windowsterminal/Everblush.json</file>
+    <file>themes/windowsterminal/Everforest Dark Hard.json</file>
+    <file>themes/windowsterminal/Everforest Light Med.json</file>
+    <file>themes/windowsterminal/Fahrenheit.json</file>
+    <file>themes/windowsterminal/Fairyfloss.json</file>
+    <file>themes/windowsterminal/Farmhouse Dark.json</file>
+    <file>themes/windowsterminal/Farmhouse Light.json</file>
+    <file>themes/windowsterminal/Fideloper.json</file>
+    <file>themes/windowsterminal/Firefly Traditional.json</file>
+    <file>themes/windowsterminal/Firefox Dev.json</file>
+    <file>themes/windowsterminal/Firewatch.json</file>
+    <file>themes/windowsterminal/Fish Tank.json</file>
+    <file>themes/windowsterminal/Flat.json</file>
+    <file>themes/windowsterminal/Flatland.json</file>
+    <file>themes/windowsterminal/Flexoki Dark.json</file>
+    <file>themes/windowsterminal/Flexoki Light.json</file>
+    <file>themes/windowsterminal/Floraverse.json</file>
+    <file>themes/windowsterminal/Forest Blue.json</file>
+    <file>themes/windowsterminal/Framer.json</file>
+    <file>themes/windowsterminal/Front End Delight.json</file>
+    <file>themes/windowsterminal/Fun Forrest.json</file>
+    <file>themes/windowsterminal/Galaxy.json</file>
+    <file>themes/windowsterminal/Galizur.json</file>
+    <file>themes/windowsterminal/Ghostty Default Style Dark.json</file>
+    <file>themes/windowsterminal/GitHub Dark Colorblind.json</file>
+    <file>themes/windowsterminal/GitHub Dark Default.json</file>
+    <file>themes/windowsterminal/GitHub Dark Dimmed.json</file>
+    <file>themes/windowsterminal/GitHub Dark High Contrast.json</file>
+    <file>themes/windowsterminal/GitHub Dark.json</file>
+    <file>themes/windowsterminal/GitHub Light Colorblind.json</file>
+    <file>themes/windowsterminal/GitHub Light Default.json</file>
+    <file>themes/windowsterminal/GitHub Light High Contrast.json</file>
+    <file>themes/windowsterminal/GitHub.json</file>
+    <file>themes/windowsterminal/GitLab Dark Grey.json</file>
+    <file>themes/windowsterminal/GitLab Dark.json</file>
+    <file>themes/windowsterminal/GitLab Light.json</file>
+    <file>themes/windowsterminal/Glacier.json</file>
+    <file>themes/windowsterminal/Grape.json</file>
+    <file>themes/windowsterminal/Grass.json</file>
+    <file>themes/windowsterminal/Grey Green.json</file>
+    <file>themes/windowsterminal/Gruber Darker.json</file>
+    <file>themes/windowsterminal/Gruvbox Dark Hard.json</file>
+    <file>themes/windowsterminal/Gruvbox Dark.json</file>
+    <file>themes/windowsterminal/Gruvbox Light Hard.json</file>
+    <file>themes/windowsterminal/Gruvbox Light.json</file>
+    <file>themes/windowsterminal/Gruvbox Material Dark.json</file>
+    <file>themes/windowsterminal/Gruvbox Material Light.json</file>
+    <file>themes/windowsterminal/Gruvbox Material.json</file>
+    <file>themes/windowsterminal/Guezwhoz.json</file>
+    <file>themes/windowsterminal/HaX0R Blue.json</file>
+    <file>themes/windowsterminal/HaX0R Gr33N.json</file>
+    <file>themes/windowsterminal/HaX0R R3D.json</file>
+    <file>themes/windowsterminal/Hacktober.json</file>
+    <file>themes/windowsterminal/Hardcore.json</file>
+    <file>themes/windowsterminal/Harper.json</file>
+    <file>themes/windowsterminal/Havn Daggry.json</file>
+    <file>themes/windowsterminal/Havn Skumring.json</file>
+    <file>themes/windowsterminal/Heeler.json</file>
+    <file>themes/windowsterminal/Highway.json</file>
+    <file>themes/windowsterminal/Hipster Green.json</file>
+    <file>themes/windowsterminal/Hivacruz.json</file>
+    <file>themes/windowsterminal/Homebrew.json</file>
+    <file>themes/windowsterminal/Hopscotch.256.json</file>
+    <file>themes/windowsterminal/Hopscotch.json</file>
+    <file>themes/windowsterminal/Horizon Bright.json</file>
+    <file>themes/windowsterminal/Horizon.json</file>
+    <file>themes/windowsterminal/Hot Dog Stand (Mustard).json</file>
+    <file>themes/windowsterminal/Hot Dog Stand.json</file>
+    <file>themes/windowsterminal/Hurtado.json</file>
+    <file>themes/windowsterminal/Hybrid.json</file>
+    <file>themes/windowsterminal/IBM 5153 CGA (Black).json</file>
+    <file>themes/windowsterminal/IBM 5153 CGA.json</file>
+    <file>themes/windowsterminal/IC Green PPL.json</file>
+    <file>themes/windowsterminal/IC Orange PPL.json</file>
+    <file>themes/windowsterminal/IR Black.json</file>
+    <file>themes/windowsterminal/IRIX Console.json</file>
+    <file>themes/windowsterminal/IRIX Terminal.json</file>
+    <file>themes/windowsterminal/Iceberg Dark.json</file>
+    <file>themes/windowsterminal/Iceberg Light.json</file>
+    <file>themes/windowsterminal/Idea.json</file>
+    <file>themes/windowsterminal/Idle Toes.json</file>
+    <file>themes/windowsterminal/Jackie Brown.json</file>
+    <file>themes/windowsterminal/Japanesque.json</file>
+    <file>themes/windowsterminal/Jellybeans.json</file>
+    <file>themes/windowsterminal/JetBrains Darcula.json</file>
+    <file>themes/windowsterminal/Jubi.json</file>
+    <file>themes/windowsterminal/Kanagawa Dragon.json</file>
+    <file>themes/windowsterminal/Kanagawa Wave.json</file>
+    <file>themes/windowsterminal/Kanagawabones.json</file>
+    <file>themes/windowsterminal/Kibble.json</file>
+    <file>themes/windowsterminal/Kitty Default.json</file>
+    <file>themes/windowsterminal/Kitty Low Contrast.json</file>
+    <file>themes/windowsterminal/Kolorit.json</file>
+    <file>themes/windowsterminal/Konsolas.json</file>
+    <file>themes/windowsterminal/Kurokula.json</file>
+    <file>themes/windowsterminal/Lab Fox.json</file>
+    <file>themes/windowsterminal/Laser.json</file>
+    <file>themes/windowsterminal/Later This Evening.json</file>
+    <file>themes/windowsterminal/Lavandula.json</file>
+    <file>themes/windowsterminal/Light Owl.json</file>
+    <file>themes/windowsterminal/Liquid Carbon Transparent.json</file>
+    <file>themes/windowsterminal/Liquid Carbon.json</file>
+    <file>themes/windowsterminal/Lovelace.json</file>
+    <file>themes/windowsterminal/Man Page.json</file>
+    <file>themes/windowsterminal/Mariana.json</file>
+    <file>themes/windowsterminal/Material Dark.json</file>
+    <file>themes/windowsterminal/Material Darker.json</file>
+    <file>themes/windowsterminal/Material Design Colors.json</file>
+    <file>themes/windowsterminal/Material Ocean.json</file>
+    <file>themes/windowsterminal/Material.json</file>
+    <file>themes/windowsterminal/Mathias.json</file>
+    <file>themes/windowsterminal/Matrix.json</file>
+    <file>themes/windowsterminal/Matte Black.json</file>
+    <file>themes/windowsterminal/Medallion.json</file>
+    <file>themes/windowsterminal/Melange Dark.json</file>
+    <file>themes/windowsterminal/Melange Light.json</file>
+    <file>themes/windowsterminal/Mellifluous.json</file>
+    <file>themes/windowsterminal/Mellow.json</file>
+    <file>themes/windowsterminal/Miasma.json</file>
+    <file>themes/windowsterminal/Midnight In Mojave.json</file>
+    <file>themes/windowsterminal/Mirage.json</file>
+    <file>themes/windowsterminal/Misterioso.json</file>
+    <file>themes/windowsterminal/Molokai.json</file>
+    <file>themes/windowsterminal/Mona Lisa.json</file>
+    <file>themes/windowsterminal/Monokai Classic.json</file>
+    <file>themes/windowsterminal/Monokai Pro Light Sun.json</file>
+    <file>themes/windowsterminal/Monokai Pro Light.json</file>
+    <file>themes/windowsterminal/Monokai Pro Machine.json</file>
+    <file>themes/windowsterminal/Monokai Pro Octagon.json</file>
+    <file>themes/windowsterminal/Monokai Pro Ristretto.json</file>
+    <file>themes/windowsterminal/Monokai Pro Spectrum.json</file>
+    <file>themes/windowsterminal/Monokai Pro.json</file>
+    <file>themes/windowsterminal/Monokai Remastered.json</file>
+    <file>themes/windowsterminal/Monokai Soda.json</file>
+    <file>themes/windowsterminal/Monokai Vivid.json</file>
+    <file>themes/windowsterminal/Moonfly.json</file>
+    <file>themes/windowsterminal/N0Tch2K.json</file>
+    <file>themes/windowsterminal/Neobones Dark.json</file>
+    <file>themes/windowsterminal/Neobones Light.json</file>
+    <file>themes/windowsterminal/Neon.json</file>
+    <file>themes/windowsterminal/Neopolitan.json</file>
+    <file>themes/windowsterminal/Neutron.json</file>
+    <file>themes/windowsterminal/Night Lion V1.json</file>
+    <file>themes/windowsterminal/Night Lion V2.json</file>
+    <file>themes/windowsterminal/Night Owl.json</file>
+    <file>themes/windowsterminal/Night Owlish Light.json</file>
+    <file>themes/windowsterminal/Nightfox.json</file>
+    <file>themes/windowsterminal/Niji.json</file>
+    <file>themes/windowsterminal/No Clown Fiesta Light.json</file>
+    <file>themes/windowsterminal/No Clown Fiesta.json</file>
+    <file>themes/windowsterminal/Nocturnal Winter.json</file>
+    <file>themes/windowsterminal/Nord Light.json</file>
+    <file>themes/windowsterminal/Nord Wave.json</file>
+    <file>themes/windowsterminal/Nord.json</file>
+    <file>themes/windowsterminal/Nordfox.json</file>
+    <file>themes/windowsterminal/Novel.json</file>
+    <file>themes/windowsterminal/Nvim Dark.json</file>
+    <file>themes/windowsterminal/Nvim Light.json</file>
+    <file>themes/windowsterminal/Obsidian.json</file>
+    <file>themes/windowsterminal/Ocean.json</file>
+    <file>themes/windowsterminal/Oceanic Material.json</file>
+    <file>themes/windowsterminal/Oceanic Next.json</file>
+    <file>themes/windowsterminal/Ollie.json</file>
+    <file>themes/windowsterminal/One Dark Two.json</file>
+    <file>themes/windowsterminal/One Double Dark.json</file>
+    <file>themes/windowsterminal/One Double Light.json</file>
+    <file>themes/windowsterminal/One Half Dark.json</file>
+    <file>themes/windowsterminal/One Half Light.json</file>
+    <file>themes/windowsterminal/Onenord Light.json</file>
+    <file>themes/windowsterminal/Onenord.json</file>
+    <file>themes/windowsterminal/Operator Mono Dark.json</file>
+    <file>themes/windowsterminal/Overnight Slumber.json</file>
+    <file>themes/windowsterminal/Oxocarbon.json</file>
+    <file>themes/windowsterminal/Pale Night Hc.json</file>
+    <file>themes/windowsterminal/Pandora.json</file>
+    <file>themes/windowsterminal/Paraiso Dark.json</file>
+    <file>themes/windowsterminal/Paul Millr.json</file>
+    <file>themes/windowsterminal/Pencil Dark.json</file>
+    <file>themes/windowsterminal/Pencil Light.json</file>
+    <file>themes/windowsterminal/Peppermint.json</file>
+    <file>themes/windowsterminal/Phala Green Dark.json</file>
+    <file>themes/windowsterminal/Piatto Light.json</file>
+    <file>themes/windowsterminal/Pnevma.json</file>
+    <file>themes/windowsterminal/Poimandres Darker.json</file>
+    <file>themes/windowsterminal/Poimandres Storm.json</file>
+    <file>themes/windowsterminal/Poimandres White.json</file>
+    <file>themes/windowsterminal/Poimandres.json</file>
+    <file>themes/windowsterminal/Popping And Locking.json</file>
+    <file>themes/windowsterminal/Powershell.json</file>
+    <file>themes/windowsterminal/Primary.json</file>
+    <file>themes/windowsterminal/Pro Light.json</file>
+    <file>themes/windowsterminal/Pro.json</file>
+    <file>themes/windowsterminal/Purple Rain.json</file>
+    <file>themes/windowsterminal/Purplepeter.json</file>
+    <file>themes/windowsterminal/Rapture.json</file>
+    <file>themes/windowsterminal/Raycast Dark.json</file>
+    <file>themes/windowsterminal/Raycast Light.json</file>
+    <file>themes/windowsterminal/Rebecca.json</file>
+    <file>themes/windowsterminal/Red Alert.json</file>
+    <file>themes/windowsterminal/Red Planet.json</file>
+    <file>themes/windowsterminal/Red Sands.json</file>
+    <file>themes/windowsterminal/Relaxed.json</file>
+    <file>themes/windowsterminal/Retro Legends.json</file>
+    <file>themes/windowsterminal/Retro.json</file>
+    <file>themes/windowsterminal/Rippedcasts.json</file>
+    <file>themes/windowsterminal/Rose Pine Dawn.json</file>
+    <file>themes/windowsterminal/Rose Pine Moon.json</file>
+    <file>themes/windowsterminal/Rose Pine.json</file>
+    <file>themes/windowsterminal/Rouge 2.json</file>
+    <file>themes/windowsterminal/Royal.json</file>
+    <file>themes/windowsterminal/Ryuuko.json</file>
+    <file>themes/windowsterminal/Sakura.json</file>
+    <file>themes/windowsterminal/Scarlet Protocol.json</file>
+    <file>themes/windowsterminal/Sea Shells.json</file>
+    <file>themes/windowsterminal/Seafoam Pastel.json</file>
+    <file>themes/windowsterminal/Selenized Black.json</file>
+    <file>themes/windowsterminal/Selenized Dark.json</file>
+    <file>themes/windowsterminal/Selenized Light.json</file>
+    <file>themes/windowsterminal/Seoulbones Dark.json</file>
+    <file>themes/windowsterminal/Seoulbones Light.json</file>
+    <file>themes/windowsterminal/Seti.json</file>
+    <file>themes/windowsterminal/Shades Of Purple.json</file>
+    <file>themes/windowsterminal/Shaman.json</file>
+    <file>themes/windowsterminal/Slate.json</file>
+    <file>themes/windowsterminal/Sleepy Hollow.json</file>
+    <file>themes/windowsterminal/Smyck.json</file>
+    <file>themes/windowsterminal/Snazzy Soft.json</file>
+    <file>themes/windowsterminal/Snazzy.json</file>
+    <file>themes/windowsterminal/Soft Server.json</file>
+    <file>themes/windowsterminal/Solarized Darcula.json</file>
+    <file>themes/windowsterminal/Solarized Dark Higher Contrast.json</file>
+    <file>themes/windowsterminal/Solarized Dark Patched.json</file>
+    <file>themes/windowsterminal/Solarized Dark.json</file>
+    <file>themes/windowsterminal/Solarized Osaka Night.json</file>
+    <file>themes/windowsterminal/Sonokai.json</file>
+    <file>themes/windowsterminal/Spacedust.json</file>
+    <file>themes/windowsterminal/Spacegray Bright.json</file>
+    <file>themes/windowsterminal/Spacegray Eighties Dull.json</file>
+    <file>themes/windowsterminal/Spacegray Eighties.json</file>
+    <file>themes/windowsterminal/Spacegray.json</file>
+    <file>themes/windowsterminal/Spiderman.json</file>
+    <file>themes/windowsterminal/Spring.json</file>
+    <file>themes/windowsterminal/Square.json</file>
+    <file>themes/windowsterminal/Squirrelsong Dark.json</file>
+    <file>themes/windowsterminal/Srcery.json</file>
+    <file>themes/windowsterminal/Starlight.json</file>
+    <file>themes/windowsterminal/Sublette.json</file>
+    <file>themes/windowsterminal/Subliminal.json</file>
+    <file>themes/windowsterminal/Sugarplum.json</file>
+    <file>themes/windowsterminal/Sundried.json</file>
+    <file>themes/windowsterminal/Symfonic.json</file>
+    <file>themes/windowsterminal/Synthwave Alpha.json</file>
+    <file>themes/windowsterminal/Synthwave Everything.json</file>
+    <file>themes/windowsterminal/Synthwave.json</file>
+    <file>themes/windowsterminal/Tango Adapted.json</file>
+    <file>themes/windowsterminal/Tango Half Adapted.json</file>
+    <file>themes/windowsterminal/Tearout.json</file>
+    <file>themes/windowsterminal/Teerb.json</file>
+    <file>themes/windowsterminal/Terafox.json</file>
+    <file>themes/windowsterminal/Terminal Basic Dark.json</file>
+    <file>themes/windowsterminal/Terminal Basic.json</file>
+    <file>themes/windowsterminal/Thayer Bright.json</file>
+    <file>themes/windowsterminal/The Hulk.json</file>
+    <file>themes/windowsterminal/Tinacious Design Dark.json</file>
+    <file>themes/windowsterminal/Tinacious Design Light.json</file>
+    <file>themes/windowsterminal/TokyoNight Day.json</file>
+    <file>themes/windowsterminal/TokyoNight Moon.json</file>
+    <file>themes/windowsterminal/TokyoNight Night.json</file>
+    <file>themes/windowsterminal/TokyoNight Storm.json</file>
+    <file>themes/windowsterminal/TokyoNight.json</file>
+    <file>themes/windowsterminal/Tomorrow Night Blue.json</file>
+    <file>themes/windowsterminal/Tomorrow Night Bright.json</file>
+    <file>themes/windowsterminal/Tomorrow Night Burns.json</file>
+    <file>themes/windowsterminal/Tomorrow Night Eighties.json</file>
+    <file>themes/windowsterminal/Tomorrow Night.json</file>
+    <file>themes/windowsterminal/Tomorrow.json</file>
+    <file>themes/windowsterminal/Toy Chest.json</file>
+    <file>themes/windowsterminal/Treehouse.json</file>
+    <file>themes/windowsterminal/Twilight.json</file>
+    <file>themes/windowsterminal/Ubuntu.json</file>
+    <file>themes/windowsterminal/Ultra Dark.json</file>
+    <file>themes/windowsterminal/Ultra Violent.json</file>
+    <file>themes/windowsterminal/Under The Sea.json</file>
+    <file>themes/windowsterminal/Unikitty.json</file>
+    <file>themes/windowsterminal/Urple.json</file>
+    <file>themes/windowsterminal/Vague.json</file>
+    <file>themes/windowsterminal/Vaughn.json</file>
+    <file>themes/windowsterminal/Vercel.json</file>
+    <file>themes/windowsterminal/Vesper.json</file>
+    <file>themes/windowsterminal/Vibrant Ink.json</file>
+    <file>themes/windowsterminal/Vimbones.json</file>
+    <file>themes/windowsterminal/Violet Dark.json</file>
+    <file>themes/windowsterminal/Violet Light.json</file>
+    <file>themes/windowsterminal/Violite.json</file>
+    <file>themes/windowsterminal/Warm Neon.json</file>
+    <file>themes/windowsterminal/Wez.json</file>
+    <file>themes/windowsterminal/Whimsy.json</file>
+    <file>themes/windowsterminal/Wild Cherry.json</file>
+    <file>themes/windowsterminal/Wilmersdorf.json</file>
+    <file>themes/windowsterminal/Wombat.json</file>
+    <file>themes/windowsterminal/Wryan.json</file>
+    <file>themes/windowsterminal/Xcode Dark hc.json</file>
+    <file>themes/windowsterminal/Xcode Dark.json</file>
+    <file>themes/windowsterminal/Xcode Light hc.json</file>
+    <file>themes/windowsterminal/Xcode Light.json</file>
+    <file>themes/windowsterminal/Xcode WWDC.json</file>
+    <file>themes/windowsterminal/Zenbones Dark.json</file>
+    <file>themes/windowsterminal/Zenbones Light.json</file>
+    <file>themes/windowsterminal/Zenbones.json</file>
+    <file>themes/windowsterminal/Zenburn.json</file>
+    <file>themes/windowsterminal/Zenburned.json</file>
+    <file>themes/windowsterminal/Zenwritten Dark.json</file>
+    <file>themes/windowsterminal/Zenwritten Light.json</file>
+    <file>themes/windowsterminal/branch.json</file>
+    <file>themes/windowsterminal/iTerm2 Dark Background.json</file>
+    <file>themes/windowsterminal/iTerm2 Default.json</file>
+    <file>themes/windowsterminal/iTerm2 Light Background.json</file>
+    <file>themes/windowsterminal/iTerm2 Pastel Dark Background.json</file>
+    <file>themes/windowsterminal/iTerm2 Smoooooth.json</file>
+    <file>themes/windowsterminal/iTerm2 Solarized Dark.json</file>
+    <file>themes/windowsterminal/iTerm2 Solarized Light.json</file>
+    <file>themes/windowsterminal/iTerm2 Tango Dark.json</file>
+    <file>themes/windowsterminal/iTerm2 Tango Light.json</file>
+    <file>themes/windowsterminal/novmbr.json</file>
+    <file>themes/windowsterminal/owl.json</file>
+    <file>themes/windowsterminal/traffic.json</file>
+    <file>themes/windowsterminal/urban.json</file>
+</qresource>
+</RCC>

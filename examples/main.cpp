@@ -10,6 +10,7 @@ int main(int argc, char *argv[]) {
     QMainWindow mainWindow;
     
     auto *console = new KodoTerm(&mainWindow);
+    console->setTheme(TerminalTheme::loadKonsoleTheme(":/themes/konsole/Breeze.colorscheme"));
     mainWindow.setCentralWidget(console);
     mainWindow.resize(800, 600);
     mainWindow.setWindowTitle("KodoTerm example");
