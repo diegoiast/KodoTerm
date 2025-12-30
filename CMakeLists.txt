@@ -14,6 +14,8 @@ option(BUILD_EXAMPLES "Build the examples" ON)
 
 include(FetchContent)
 
+
+###################################################
 # Fetch libvterm
 FetchContent_Declare(
   libvterm
@@ -33,10 +35,32 @@ target_include_directories(vterm PUBLIC
     "${libvterm_SOURCE_DIR}/src"
 )
 
-add_library(KodoTerm
+###################################################
+# Main library
+
+set(KODOTERM_SOURCES
     src/KodoTerm.cpp
     include/KodoTerm/KodoTerm.hpp
+    src/PtyProcess.cpp
+    src/PtyProcess.h
 )
+
+if(UNIX)
+    list(APPEND KODOTERM_SOURCES 
+        src/PtyProcess_unix.cpp 
+        src/PtyProcess_unix.h
+    )
+    # Check for util library (needed for forkpty on some systems)
+    find_library(UTIL_LIB util)
+elseif(WIN32)
+    list(APPEND KODOTERM_SOURCES 
+        src/PtyProcess_win.cpp 
+        src/PtyProcess_win.h
+    )
+endif()
+add_library(KodoTerm ${KODOTERM_SOURCES})
+add_library(KodoTerm::KodoTerm ALIAS KodoTerm)
+target_include_directories(KodoTerm PRIVATE src)
 target_include_directories(KodoTerm PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -47,18 +71,19 @@ target_link_libraries(KodoTerm PUBLIC
     Qt6::Widgets
     vterm
 )
-add_library(KodoTerm::KodoTerm ALIAS KodoTerm)
-
 
 if(BUILD_EXAMPLES)
-add_executable(KodoTermDemo
-  examples/main.cpp
-)
-target_link_libraries(KodoTermDemo PRIVATE
-  Qt6::Core
-  Qt6::Gui
-  Qt6::Widgets
-  vterm
-  KodoTerm::KodoTerm
-)
+    #if(UNIX AND UTIL_LIB)
+    #    target_link_libraries(codoterm PRIVATE ${UTIL_LIB})
+    #endif()
+    
+    add_executable(KodoTermDemo
+      examples/main.cpp
+    )
+    target_link_libraries(KodoTermDemo PRIVATE
+      Qt6::Core
+      Qt6::Gui
+      Qt6::Widgets
+      KodoTerm::KodoTerm
+    )
 endif()

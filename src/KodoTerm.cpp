@@ -2,6 +2,7 @@
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
 #include "KodoTerm/KodoTerm.hpp"
+#include "PtyProcess.h"
 
 #include <QPainter>
 #include <QKeyEvent>
@@ -21,35 +22,15 @@ static void output_callback(const char *s, size_t len, void *user) {
     }
 }
 
-int KodoTerm::onDamage(VTermRect rect, void *user) {
-    auto *widget = static_cast<KodoTerm*>(user);
-    int w = widget->m_cellSize.width();
-    int h = widget->m_cellSize.height();
-    widget->update(rect.start_col * w, rect.start_row * h, 
-                   (rect.end_col - rect.start_col) * w, 
-                   (rect.end_row - rect.start_row) * h);
-    return 1;
-}
-
-int KodoTerm::onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user) {
-    auto *widget = static_cast<KodoTerm*>(user);
-    widget->m_cursorRow = pos.row;
-    widget->m_cursorCol = pos.col;
-    widget->m_cursorVisible = visible;
-    widget->update(); 
-    return 1;
-}
-
-int KodoTerm::onPushLine(int cols, const VTermScreenCell *cells, void *user) {
-    return 1; 
-}
-
-int KodoTerm::onPopLine(int cols, VTermScreenCell *cells, void *user) {
-    return 1;
+static void vterm_output_callback(const char *s, size_t len, void *user) {
+    auto *pty = static_cast<PtyProcess*>(user);
+    if (pty) {
+        pty->write(QByteArray(s, (int)len));
+    }
 }
 
 KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
-    m_font = QFont("Monospace", 10);
+  m_font = QFont("Monospace", 10);
     m_font.setStyleHint(QFont::Monospace);
     
     QFontMetrics fm(m_font);
@@ -85,48 +66,48 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this);
     vterm_screen_reset(m_vtermScreen, 1);
     
+    setFocusPolicy(Qt::StrongFocus);
     setupPty();
 }
 
 KodoTerm::~KodoTerm() {
     if (m_vterm) vterm_free(m_vterm);
-    if (m_masterFd >= 0) ::close(m_masterFd);
+    //if (m_masterFd >= 0) ::close(m_masterFd);
 }
 
 void KodoTerm::setupPty() {
-    struct winsize ws;
-    ws.ws_row = 25;
-    ws.ws_col = 80;
-    ws.ws_xpixel = 0;
-    ws.ws_ypixel = 0;
-    
-    pid_t pid = forkpty(&m_masterFd, nullptr, nullptr, &ws);
-    
-    if (pid == -1) return;
-    
-    if (pid == 0) {
-        setenv("TERM", "xterm-256color", 1);
-        execl("/bin/bash", "/bin/bash", nullptr);
-        _exit(1);
-    } else {
-        m_childPid = pid;
-        vterm_output_set_callback(m_vterm, output_callback, &m_masterFd);
-        m_notifier = new QSocketNotifier(m_masterFd, QSocketNotifier::Read, this);
-        connect(m_notifier, &QSocketNotifier::activated, this, &KodoTerm::onPtyReadyRead);
+    m_pty = PtyProcess::create(this);
+    if (!m_pty) {
+        qWarning() << "Failed to create PtyProcess backend";
+        return;
     }
+    connect(m_pty, &PtyProcess::readyRead, this, &KodoTerm::onPtyReadyRead);
+    
+    // Update vterm output callback to point to m_pty
+    vterm_output_set_callback(m_vterm, vterm_output_callback, m_pty);
+
+    QString program;
+#ifdef Q_OS_WIN
+    program = "powershell.exe"; // or cmd.exe
+#else
+    program = "/bin/bash";
+#endif
+
+    // Initial size
+    QSize size(80, 25);
+    if (!m_cellSize.isEmpty()) {
+        size = QSize(width() / m_cellSize.width(), height() / m_cellSize.height());
+        if (size.width() <= 0) size.setWidth(80);
+        if (size.height() <= 0) size.setHeight(25);
+    }
+
+    m_pty->start(program, QStringList(), size);
 }
 
-void KodoTerm::onPtyReadyRead() {
-    char buffer[4096];
-    ssize_t len = ::read(m_masterFd, buffer, sizeof(buffer));
-    
-    if (len > 0) {
-        vterm_input_write(m_vterm, buffer, len);
+void KodoTerm::onPtyReadyRead(const QByteArray &data) {
+    if (!data.isEmpty()) {
+        vterm_input_write(m_vterm, data.constData(), data.size());
         vterm_screen_flush_damage(m_vtermScreen);
-    } else if (len < 0 && errno != EAGAIN) {
-        m_notifier->setEnabled(false);
-    } else if (len == 0) {
-        m_notifier->setEnabled(false);
     }
 }
 
@@ -145,14 +126,31 @@ void KodoTerm::updateTerminalSize() {
             vterm_screen_flush_damage(m_vtermScreen);
     }
     
-    if (m_masterFd >= 0) {
-        struct winsize ws;
-        ws.ws_row = (unsigned short)rows;
-        ws.ws_col = (unsigned short)cols;
-        ws.ws_xpixel = (unsigned short)width();
-        ws.ws_ypixel = (unsigned short)height();
-        ioctl(m_masterFd, TIOCSWINSZ, &ws);
+    if (m_pty) {
+        m_pty->resize(QSize(cols, rows)); // Check if PtyProcess expects cols/rows or width/height pixels?
+        // My interface says "resize(const QSize &size)". 
+        // PtyProcessUnix::resize uses it as height=rows, width=cols.
+        // Let's stick to that convention: width=cols, height=rows.
     }
+}
+
+int KodoTerm::onDamage(VTermRect rect, void *user) {
+    auto *widget = static_cast<KodoTerm*>(user);
+    int w = widget->m_cellSize.width();
+    int h = widget->m_cellSize.height();
+    widget->update(rect.start_col * w, rect.start_row * h, 
+                   (rect.end_col - rect.start_col) * w, 
+                   (rect.end_row - rect.start_row) * h);
+    return 1;
+}
+
+int KodoTerm::onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user) {
+    auto *widget = static_cast<KodoTerm*>(user);
+    widget->m_cursorRow = pos.row;
+    widget->m_cursorCol = pos.col;
+    widget->m_cursorVisible = visible;
+    widget->update(); 
+    return 1;
 }
 
 void KodoTerm::resizeEvent(QResizeEvent *event) {
