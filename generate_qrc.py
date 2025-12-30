@@ -15,4 +15,4 @@ def generate_qrc(qrc_file, theme_dirs):
         f.write('</RCC>\n')
 
 if __name__ == '__main__':
-    generate_qrc('themes.qrc', ['themes'])
+    generate_qrc('KodoTermThemes.qrc', ['KodoTermThemes'])

@@ -30,6 +30,7 @@ struct TerminalTheme {
         ThemeFormat format;
     };
 
+    static TerminalTheme defaultTheme();
     static TerminalTheme loadKonsoleTheme(const QString &path);
     static TerminalTheme loadWindowsTerminalTheme(const QString &path);
     static QList<ThemeInfo> builtInThemes();

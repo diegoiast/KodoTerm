@@ -1,0 +1,472 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/">
+    <file>KodoTermThemes/konsole/BlackOnLightYellow.colorscheme</file>
+    <file>KodoTermThemes/konsole/BlackOnRandomLight.colorscheme</file>
+    <file>KodoTermThemes/konsole/BlackOnWhite.colorscheme</file>
+    <file>KodoTermThemes/konsole/BlueOnBlack.colorscheme</file>
+    <file>KodoTermThemes/konsole/Breeze.colorscheme</file>
+    <file>KodoTermThemes/konsole/Campbell.colorscheme</file>
+    <file>KodoTermThemes/konsole/DarkPastels.colorscheme</file>
+    <file>KodoTermThemes/konsole/GreenOnBlack.colorscheme</file>
+    <file>KodoTermThemes/konsole/Linux.colorscheme</file>
+    <file>KodoTermThemes/konsole/RedOnBlack.colorscheme</file>
+    <file>KodoTermThemes/konsole/Solarized.colorscheme</file>
+    <file>KodoTermThemes/konsole/SolarizedLight.colorscheme</file>
+    <file>KodoTermThemes/konsole/WhiteOnBlack.colorscheme</file>
+    <file>KodoTermThemes/windowsterminal/0x96f.json</file>
+    <file>KodoTermThemes/windowsterminal/12-bit Rainbow.json</file>
+    <file>KodoTermThemes/windowsterminal/3024 Day.json</file>
+    <file>KodoTermThemes/windowsterminal/3024 Night.json</file>
+    <file>KodoTermThemes/windowsterminal/Aardvark Blue.json</file>
+    <file>KodoTermThemes/windowsterminal/Abernathy.json</file>
+    <file>KodoTermThemes/windowsterminal/Adventure Time.json</file>
+    <file>KodoTermThemes/windowsterminal/Adventure.json</file>
+    <file>KodoTermThemes/windowsterminal/Adwaita Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Adwaita.json</file>
+    <file>KodoTermThemes/windowsterminal/Afterglow.json</file>
+    <file>KodoTermThemes/windowsterminal/Aizen Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Aizen Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Alabaster.json</file>
+    <file>KodoTermThemes/windowsterminal/Alien Blood.json</file>
+    <file>KodoTermThemes/windowsterminal/Andromeda.json</file>
+    <file>KodoTermThemes/windowsterminal/Apple Classic.json</file>
+    <file>KodoTermThemes/windowsterminal/Apple System Colors Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Apple System Colors.json</file>
+    <file>KodoTermThemes/windowsterminal/Arcoiris.json</file>
+    <file>KodoTermThemes/windowsterminal/Ardoise.json</file>
+    <file>KodoTermThemes/windowsterminal/Argonaut.json</file>
+    <file>KodoTermThemes/windowsterminal/Arthur.json</file>
+    <file>KodoTermThemes/windowsterminal/Atelier Sulphurpool.json</file>
+    <file>KodoTermThemes/windowsterminal/Atom One Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Atom One Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Atom.json</file>
+    <file>KodoTermThemes/windowsterminal/Aura.json</file>
+    <file>KodoTermThemes/windowsterminal/Aurora.json</file>
+    <file>KodoTermThemes/windowsterminal/Ayu Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Ayu Mirage.json</file>
+    <file>KodoTermThemes/windowsterminal/Ayu.json</file>
+    <file>KodoTermThemes/windowsterminal/Banana Blueberry.json</file>
+    <file>KodoTermThemes/windowsterminal/Batman.json</file>
+    <file>KodoTermThemes/windowsterminal/Belafonte Day.json</file>
+    <file>KodoTermThemes/windowsterminal/Belafonte Night.json</file>
+    <file>KodoTermThemes/windowsterminal/Birds Of Paradise.json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Bathory).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Burzum).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Dark Funeral).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Gorgoroth).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Immortal).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Khold).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Marduk).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Mayhem).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Nile).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal (Venom).json</file>
+    <file>KodoTermThemes/windowsterminal/Black Metal.json</file>
+    <file>KodoTermThemes/windowsterminal/Blazer.json</file>
+    <file>KodoTermThemes/windowsterminal/Blue Berry Pie.json</file>
+    <file>KodoTermThemes/windowsterminal/Blue Dolphin.json</file>
+    <file>KodoTermThemes/windowsterminal/Blue Matrix.json</file>
+    <file>KodoTermThemes/windowsterminal/Bluloco Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Bluloco Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Borland.json</file>
+    <file>KodoTermThemes/windowsterminal/Box.json</file>
+    <file>KodoTermThemes/windowsterminal/Breadog.json</file>
+    <file>KodoTermThemes/windowsterminal/Breeze.json</file>
+    <file>KodoTermThemes/windowsterminal/Bright Lights.json</file>
+    <file>KodoTermThemes/windowsterminal/Broadcast.json</file>
+    <file>KodoTermThemes/windowsterminal/Brogrammer.json</file>
+    <file>KodoTermThemes/windowsterminal/Builtin Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Builtin Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Builtin Pastel Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Builtin Tango Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Builtin Tango Light.json</file>
+    <file>KodoTermThemes/windowsterminal/C64.json</file>
+    <file>KodoTermThemes/windowsterminal/CGA.json</file>
+    <file>KodoTermThemes/windowsterminal/CLRS.json</file>
+    <file>KodoTermThemes/windowsterminal/Calamity.json</file>
+    <file>KodoTermThemes/windowsterminal/Campbell.json</file>
+    <file>KodoTermThemes/windowsterminal/Carbonfox.json</file>
+    <file>KodoTermThemes/windowsterminal/Catppuccin Frappe.json</file>
+    <file>KodoTermThemes/windowsterminal/Catppuccin Latte.json</file>
+    <file>KodoTermThemes/windowsterminal/Catppuccin Macchiato.json</file>
+    <file>KodoTermThemes/windowsterminal/Catppuccin Mocha.json</file>
+    <file>KodoTermThemes/windowsterminal/Chalk.json</file>
+    <file>KodoTermThemes/windowsterminal/Chalkboard.json</file>
+    <file>KodoTermThemes/windowsterminal/Challenger Deep.json</file>
+    <file>KodoTermThemes/windowsterminal/Chester.json</file>
+    <file>KodoTermThemes/windowsterminal/Ciapre.json</file>
+    <file>KodoTermThemes/windowsterminal/Citruszest.json</file>
+    <file>KodoTermThemes/windowsterminal/Cobalt Neon.json</file>
+    <file>KodoTermThemes/windowsterminal/Cobalt Next Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Cobalt Next Minimal.json</file>
+    <file>KodoTermThemes/windowsterminal/Cobalt Next.json</file>
+    <file>KodoTermThemes/windowsterminal/Cobalt2.json</file>
+    <file>KodoTermThemes/windowsterminal/Coffee Theme.json</file>
+    <file>KodoTermThemes/windowsterminal/Crayon Pony Fish.json</file>
+    <file>KodoTermThemes/windowsterminal/Cursor Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Cutie Pro.json</file>
+    <file>KodoTermThemes/windowsterminal/Cyberdyne.json</file>
+    <file>KodoTermThemes/windowsterminal/Cyberpunk Scarlet Protocol.json</file>
+    <file>KodoTermThemes/windowsterminal/Cyberpunk.json</file>
+    <file>KodoTermThemes/windowsterminal/Dark Modern.json</file>
+    <file>KodoTermThemes/windowsterminal/Dark Pastel.json</file>
+    <file>KodoTermThemes/windowsterminal/Dark+.json</file>
+    <file>KodoTermThemes/windowsterminal/Darkermatrix.json</file>
+    <file>KodoTermThemes/windowsterminal/Darkmatrix.json</file>
+    <file>KodoTermThemes/windowsterminal/Darkside.json</file>
+    <file>KodoTermThemes/windowsterminal/Dawnfox.json</file>
+    <file>KodoTermThemes/windowsterminal/Dayfox.json</file>
+    <file>KodoTermThemes/windowsterminal/Deep.json</file>
+    <file>KodoTermThemes/windowsterminal/Desert.json</file>
+    <file>KodoTermThemes/windowsterminal/Detuned.json</file>
+    <file>KodoTermThemes/windowsterminal/Dimidium.json</file>
+    <file>KodoTermThemes/windowsterminal/Dimmed Monokai.json</file>
+    <file>KodoTermThemes/windowsterminal/Django Reborn Again.json</file>
+    <file>KodoTermThemes/windowsterminal/Django Smooth.json</file>
+    <file>KodoTermThemes/windowsterminal/Django.json</file>
+    <file>KodoTermThemes/windowsterminal/Doom One.json</file>
+    <file>KodoTermThemes/windowsterminal/Doom Peacock.json</file>
+    <file>KodoTermThemes/windowsterminal/Dot Gov.json</file>
+    <file>KodoTermThemes/windowsterminal/Dracula+.json</file>
+    <file>KodoTermThemes/windowsterminal/Dracula.json</file>
+    <file>KodoTermThemes/windowsterminal/Duckbones.json</file>
+    <file>KodoTermThemes/windowsterminal/Duotone Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Duskfox.json</file>
+    <file>KodoTermThemes/windowsterminal/ENCOM.json</file>
+    <file>KodoTermThemes/windowsterminal/Earthsong.json</file>
+    <file>KodoTermThemes/windowsterminal/Electron Highlighter.json</file>
+    <file>KodoTermThemes/windowsterminal/Elegant.json</file>
+    <file>KodoTermThemes/windowsterminal/Elemental.json</file>
+    <file>KodoTermThemes/windowsterminal/Elementary.json</file>
+    <file>KodoTermThemes/windowsterminal/Embark.json</file>
+    <file>KodoTermThemes/windowsterminal/Embers Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Espresso Libre.json</file>
+    <file>KodoTermThemes/windowsterminal/Espresso.json</file>
+    <file>KodoTermThemes/windowsterminal/Everblush.json</file>
+    <file>KodoTermThemes/windowsterminal/Everforest Dark Hard.json</file>
+    <file>KodoTermThemes/windowsterminal/Everforest Light Med.json</file>
+    <file>KodoTermThemes/windowsterminal/Fahrenheit.json</file>
+    <file>KodoTermThemes/windowsterminal/Fairyfloss.json</file>
+    <file>KodoTermThemes/windowsterminal/Farmhouse Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Farmhouse Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Fideloper.json</file>
+    <file>KodoTermThemes/windowsterminal/Firefly Traditional.json</file>
+    <file>KodoTermThemes/windowsterminal/Firefox Dev.json</file>
+    <file>KodoTermThemes/windowsterminal/Firewatch.json</file>
+    <file>KodoTermThemes/windowsterminal/Fish Tank.json</file>
+    <file>KodoTermThemes/windowsterminal/Flat.json</file>
+    <file>KodoTermThemes/windowsterminal/Flatland.json</file>
+    <file>KodoTermThemes/windowsterminal/Flexoki Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Flexoki Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Floraverse.json</file>
+    <file>KodoTermThemes/windowsterminal/Forest Blue.json</file>
+    <file>KodoTermThemes/windowsterminal/Framer.json</file>
+    <file>KodoTermThemes/windowsterminal/Front End Delight.json</file>
+    <file>KodoTermThemes/windowsterminal/Fun Forrest.json</file>
+    <file>KodoTermThemes/windowsterminal/Galaxy.json</file>
+    <file>KodoTermThemes/windowsterminal/Galizur.json</file>
+    <file>KodoTermThemes/windowsterminal/Ghostty Default Style Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Dark Colorblind.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Dark Default.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Dark Dimmed.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Dark High Contrast.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Light Colorblind.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Light Default.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub Light High Contrast.json</file>
+    <file>KodoTermThemes/windowsterminal/GitHub.json</file>
+    <file>KodoTermThemes/windowsterminal/GitLab Dark Grey.json</file>
+    <file>KodoTermThemes/windowsterminal/GitLab Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/GitLab Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Glacier.json</file>
+    <file>KodoTermThemes/windowsterminal/Grape.json</file>
+    <file>KodoTermThemes/windowsterminal/Grass.json</file>
+    <file>KodoTermThemes/windowsterminal/Grey Green.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruber Darker.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Dark Hard.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Light Hard.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Material Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Material Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Gruvbox Material.json</file>
+    <file>KodoTermThemes/windowsterminal/Guezwhoz.json</file>
+    <file>KodoTermThemes/windowsterminal/HaX0R Blue.json</file>
+    <file>KodoTermThemes/windowsterminal/HaX0R Gr33N.json</file>
+    <file>KodoTermThemes/windowsterminal/HaX0R R3D.json</file>
+    <file>KodoTermThemes/windowsterminal/Hacktober.json</file>
+    <file>KodoTermThemes/windowsterminal/Hardcore.json</file>
+    <file>KodoTermThemes/windowsterminal/Harper.json</file>
+    <file>KodoTermThemes/windowsterminal/Havn Daggry.json</file>
+    <file>KodoTermThemes/windowsterminal/Havn Skumring.json</file>
+    <file>KodoTermThemes/windowsterminal/Heeler.json</file>
+    <file>KodoTermThemes/windowsterminal/Highway.json</file>
+    <file>KodoTermThemes/windowsterminal/Hipster Green.json</file>
+    <file>KodoTermThemes/windowsterminal/Hivacruz.json</file>
+    <file>KodoTermThemes/windowsterminal/Homebrew.json</file>
+    <file>KodoTermThemes/windowsterminal/Hopscotch.256.json</file>
+    <file>KodoTermThemes/windowsterminal/Hopscotch.json</file>
+    <file>KodoTermThemes/windowsterminal/Horizon Bright.json</file>
+    <file>KodoTermThemes/windowsterminal/Horizon.json</file>
+    <file>KodoTermThemes/windowsterminal/Hot Dog Stand (Mustard).json</file>
+    <file>KodoTermThemes/windowsterminal/Hot Dog Stand.json</file>
+    <file>KodoTermThemes/windowsterminal/Hurtado.json</file>
+    <file>KodoTermThemes/windowsterminal/Hybrid.json</file>
+    <file>KodoTermThemes/windowsterminal/IBM 5153 CGA (Black).json</file>
+    <file>KodoTermThemes/windowsterminal/IBM 5153 CGA.json</file>
+    <file>KodoTermThemes/windowsterminal/IC Green PPL.json</file>
+    <file>KodoTermThemes/windowsterminal/IC Orange PPL.json</file>
+    <file>KodoTermThemes/windowsterminal/IR Black.json</file>
+    <file>KodoTermThemes/windowsterminal/IRIX Console.json</file>
+    <file>KodoTermThemes/windowsterminal/IRIX Terminal.json</file>
+    <file>KodoTermThemes/windowsterminal/Iceberg Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Iceberg Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Idea.json</file>
+    <file>KodoTermThemes/windowsterminal/Idle Toes.json</file>
+    <file>KodoTermThemes/windowsterminal/Jackie Brown.json</file>
+    <file>KodoTermThemes/windowsterminal/Japanesque.json</file>
+    <file>KodoTermThemes/windowsterminal/Jellybeans.json</file>
+    <file>KodoTermThemes/windowsterminal/JetBrains Darcula.json</file>
+    <file>KodoTermThemes/windowsterminal/Jubi.json</file>
+    <file>KodoTermThemes/windowsterminal/Kanagawa Dragon.json</file>
+    <file>KodoTermThemes/windowsterminal/Kanagawa Wave.json</file>
+    <file>KodoTermThemes/windowsterminal/Kanagawabones.json</file>
+    <file>KodoTermThemes/windowsterminal/Kibble.json</file>
+    <file>KodoTermThemes/windowsterminal/Kitty Default.json</file>
+    <file>KodoTermThemes/windowsterminal/Kitty Low Contrast.json</file>
+    <file>KodoTermThemes/windowsterminal/Kolorit.json</file>
+    <file>KodoTermThemes/windowsterminal/Konsolas.json</file>
+    <file>KodoTermThemes/windowsterminal/Kurokula.json</file>
+    <file>KodoTermThemes/windowsterminal/Lab Fox.json</file>
+    <file>KodoTermThemes/windowsterminal/Laser.json</file>
+    <file>KodoTermThemes/windowsterminal/Later This Evening.json</file>
+    <file>KodoTermThemes/windowsterminal/Lavandula.json</file>
+    <file>KodoTermThemes/windowsterminal/Light Owl.json</file>
+    <file>KodoTermThemes/windowsterminal/Liquid Carbon Transparent.json</file>
+    <file>KodoTermThemes/windowsterminal/Liquid Carbon.json</file>
+    <file>KodoTermThemes/windowsterminal/Lovelace.json</file>
+    <file>KodoTermThemes/windowsterminal/Man Page.json</file>
+    <file>KodoTermThemes/windowsterminal/Mariana.json</file>
+    <file>KodoTermThemes/windowsterminal/Material Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Material Darker.json</file>
+    <file>KodoTermThemes/windowsterminal/Material Design Colors.json</file>
+    <file>KodoTermThemes/windowsterminal/Material Ocean.json</file>
+    <file>KodoTermThemes/windowsterminal/Material.json</file>
+    <file>KodoTermThemes/windowsterminal/Mathias.json</file>
+    <file>KodoTermThemes/windowsterminal/Matrix.json</file>
+    <file>KodoTermThemes/windowsterminal/Matte Black.json</file>
+    <file>KodoTermThemes/windowsterminal/Medallion.json</file>
+    <file>KodoTermThemes/windowsterminal/Melange Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Melange Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Mellifluous.json</file>
+    <file>KodoTermThemes/windowsterminal/Mellow.json</file>
+    <file>KodoTermThemes/windowsterminal/Miasma.json</file>
+    <file>KodoTermThemes/windowsterminal/Midnight In Mojave.json</file>
+    <file>KodoTermThemes/windowsterminal/Mirage.json</file>
+    <file>KodoTermThemes/windowsterminal/Misterioso.json</file>
+    <file>KodoTermThemes/windowsterminal/Molokai.json</file>
+    <file>KodoTermThemes/windowsterminal/Mona Lisa.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Classic.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Light Sun.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Machine.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Octagon.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Ristretto.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro Spectrum.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Pro.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Remastered.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Soda.json</file>
+    <file>KodoTermThemes/windowsterminal/Monokai Vivid.json</file>
+    <file>KodoTermThemes/windowsterminal/Moonfly.json</file>
+    <file>KodoTermThemes/windowsterminal/N0Tch2K.json</file>
+    <file>KodoTermThemes/windowsterminal/Neobones Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Neobones Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Neon.json</file>
+    <file>KodoTermThemes/windowsterminal/Neopolitan.json</file>
+    <file>KodoTermThemes/windowsterminal/Neutron.json</file>
+    <file>KodoTermThemes/windowsterminal/Night Lion V1.json</file>
+    <file>KodoTermThemes/windowsterminal/Night Lion V2.json</file>
+    <file>KodoTermThemes/windowsterminal/Night Owl.json</file>
+    <file>KodoTermThemes/windowsterminal/Night Owlish Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Nightfox.json</file>
+    <file>KodoTermThemes/windowsterminal/Niji.json</file>
+    <file>KodoTermThemes/windowsterminal/No Clown Fiesta Light.json</file>
+    <file>KodoTermThemes/windowsterminal/No Clown Fiesta.json</file>
+    <file>KodoTermThemes/windowsterminal/Nocturnal Winter.json</file>
+    <file>KodoTermThemes/windowsterminal/Nord Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Nord Wave.json</file>
+    <file>KodoTermThemes/windowsterminal/Nord.json</file>
+    <file>KodoTermThemes/windowsterminal/Nordfox.json</file>
+    <file>KodoTermThemes/windowsterminal/Novel.json</file>
+    <file>KodoTermThemes/windowsterminal/Nvim Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Nvim Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Obsidian.json</file>
+    <file>KodoTermThemes/windowsterminal/Ocean.json</file>
+    <file>KodoTermThemes/windowsterminal/Oceanic Material.json</file>
+    <file>KodoTermThemes/windowsterminal/Oceanic Next.json</file>
+    <file>KodoTermThemes/windowsterminal/Ollie.json</file>
+    <file>KodoTermThemes/windowsterminal/One Dark Two.json</file>
+    <file>KodoTermThemes/windowsterminal/One Double Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/One Double Light.json</file>
+    <file>KodoTermThemes/windowsterminal/One Half Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/One Half Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Onenord Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Onenord.json</file>
+    <file>KodoTermThemes/windowsterminal/Operator Mono Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Overnight Slumber.json</file>
+    <file>KodoTermThemes/windowsterminal/Oxocarbon.json</file>
+    <file>KodoTermThemes/windowsterminal/Pale Night Hc.json</file>
+    <file>KodoTermThemes/windowsterminal/Pandora.json</file>
+    <file>KodoTermThemes/windowsterminal/Paraiso Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Paul Millr.json</file>
+    <file>KodoTermThemes/windowsterminal/Pencil Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Pencil Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Peppermint.json</file>
+    <file>KodoTermThemes/windowsterminal/Phala Green Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Piatto Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Pnevma.json</file>
+    <file>KodoTermThemes/windowsterminal/Poimandres Darker.json</file>
+    <file>KodoTermThemes/windowsterminal/Poimandres Storm.json</file>
+    <file>KodoTermThemes/windowsterminal/Poimandres White.json</file>
+    <file>KodoTermThemes/windowsterminal/Poimandres.json</file>
+    <file>KodoTermThemes/windowsterminal/Popping And Locking.json</file>
+    <file>KodoTermThemes/windowsterminal/Powershell.json</file>
+    <file>KodoTermThemes/windowsterminal/Primary.json</file>
+    <file>KodoTermThemes/windowsterminal/Pro Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Pro.json</file>
+    <file>KodoTermThemes/windowsterminal/Purple Rain.json</file>
+    <file>KodoTermThemes/windowsterminal/Purplepeter.json</file>
+    <file>KodoTermThemes/windowsterminal/Rapture.json</file>
+    <file>KodoTermThemes/windowsterminal/Raycast Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Raycast Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Rebecca.json</file>
+    <file>KodoTermThemes/windowsterminal/Red Alert.json</file>
+    <file>KodoTermThemes/windowsterminal/Red Planet.json</file>
+    <file>KodoTermThemes/windowsterminal/Red Sands.json</file>
+    <file>KodoTermThemes/windowsterminal/Relaxed.json</file>
+    <file>KodoTermThemes/windowsterminal/Retro Legends.json</file>
+    <file>KodoTermThemes/windowsterminal/Retro.json</file>
+    <file>KodoTermThemes/windowsterminal/Rippedcasts.json</file>
+    <file>KodoTermThemes/windowsterminal/Rose Pine Dawn.json</file>
+    <file>KodoTermThemes/windowsterminal/Rose Pine Moon.json</file>
+    <file>KodoTermThemes/windowsterminal/Rose Pine.json</file>
+    <file>KodoTermThemes/windowsterminal/Rouge 2.json</file>
+    <file>KodoTermThemes/windowsterminal/Royal.json</file>
+    <file>KodoTermThemes/windowsterminal/Ryuuko.json</file>
+    <file>KodoTermThemes/windowsterminal/Sakura.json</file>
+    <file>KodoTermThemes/windowsterminal/Scarlet Protocol.json</file>
+    <file>KodoTermThemes/windowsterminal/Sea Shells.json</file>
+    <file>KodoTermThemes/windowsterminal/Seafoam Pastel.json</file>
+    <file>KodoTermThemes/windowsterminal/Selenized Black.json</file>
+    <file>KodoTermThemes/windowsterminal/Selenized Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Selenized Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Seoulbones Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Seoulbones Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Seti.json</file>
+    <file>KodoTermThemes/windowsterminal/Shades Of Purple.json</file>
+    <file>KodoTermThemes/windowsterminal/Shaman.json</file>
+    <file>KodoTermThemes/windowsterminal/Slate.json</file>
+    <file>KodoTermThemes/windowsterminal/Sleepy Hollow.json</file>
+    <file>KodoTermThemes/windowsterminal/Smyck.json</file>
+    <file>KodoTermThemes/windowsterminal/Snazzy Soft.json</file>
+    <file>KodoTermThemes/windowsterminal/Snazzy.json</file>
+    <file>KodoTermThemes/windowsterminal/Soft Server.json</file>
+    <file>KodoTermThemes/windowsterminal/Solarized Darcula.json</file>
+    <file>KodoTermThemes/windowsterminal/Solarized Dark Higher Contrast.json</file>
+    <file>KodoTermThemes/windowsterminal/Solarized Dark Patched.json</file>
+    <file>KodoTermThemes/windowsterminal/Solarized Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Solarized Osaka Night.json</file>
+    <file>KodoTermThemes/windowsterminal/Sonokai.json</file>
+    <file>KodoTermThemes/windowsterminal/Spacedust.json</file>
+    <file>KodoTermThemes/windowsterminal/Spacegray Bright.json</file>
+    <file>KodoTermThemes/windowsterminal/Spacegray Eighties Dull.json</file>
+    <file>KodoTermThemes/windowsterminal/Spacegray Eighties.json</file>
+    <file>KodoTermThemes/windowsterminal/Spacegray.json</file>
+    <file>KodoTermThemes/windowsterminal/Spiderman.json</file>
+    <file>KodoTermThemes/windowsterminal/Spring.json</file>
+    <file>KodoTermThemes/windowsterminal/Square.json</file>
+    <file>KodoTermThemes/windowsterminal/Squirrelsong Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Srcery.json</file>
+    <file>KodoTermThemes/windowsterminal/Starlight.json</file>
+    <file>KodoTermThemes/windowsterminal/Sublette.json</file>
+    <file>KodoTermThemes/windowsterminal/Subliminal.json</file>
+    <file>KodoTermThemes/windowsterminal/Sugarplum.json</file>
+    <file>KodoTermThemes/windowsterminal/Sundried.json</file>
+    <file>KodoTermThemes/windowsterminal/Symfonic.json</file>
+    <file>KodoTermThemes/windowsterminal/Synthwave Alpha.json</file>
+    <file>KodoTermThemes/windowsterminal/Synthwave Everything.json</file>
+    <file>KodoTermThemes/windowsterminal/Synthwave.json</file>
+    <file>KodoTermThemes/windowsterminal/Tango Adapted.json</file>
+    <file>KodoTermThemes/windowsterminal/Tango Half Adapted.json</file>
+    <file>KodoTermThemes/windowsterminal/Tearout.json</file>
+    <file>KodoTermThemes/windowsterminal/Teerb.json</file>
+    <file>KodoTermThemes/windowsterminal/Terafox.json</file>
+    <file>KodoTermThemes/windowsterminal/Terminal Basic Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Terminal Basic.json</file>
+    <file>KodoTermThemes/windowsterminal/Thayer Bright.json</file>
+    <file>KodoTermThemes/windowsterminal/The Hulk.json</file>
+    <file>KodoTermThemes/windowsterminal/Tinacious Design Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Tinacious Design Light.json</file>
+    <file>KodoTermThemes/windowsterminal/TokyoNight Day.json</file>
+    <file>KodoTermThemes/windowsterminal/TokyoNight Moon.json</file>
+    <file>KodoTermThemes/windowsterminal/TokyoNight Night.json</file>
+    <file>KodoTermThemes/windowsterminal/TokyoNight Storm.json</file>
+    <file>KodoTermThemes/windowsterminal/TokyoNight.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow Night Blue.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow Night Bright.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow Night Burns.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow Night Eighties.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow Night.json</file>
+    <file>KodoTermThemes/windowsterminal/Tomorrow.json</file>
+    <file>KodoTermThemes/windowsterminal/Toy Chest.json</file>
+    <file>KodoTermThemes/windowsterminal/Treehouse.json</file>
+    <file>KodoTermThemes/windowsterminal/Twilight.json</file>
+    <file>KodoTermThemes/windowsterminal/Ubuntu.json</file>
+    <file>KodoTermThemes/windowsterminal/Ultra Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Ultra Violent.json</file>
+    <file>KodoTermThemes/windowsterminal/Under The Sea.json</file>
+    <file>KodoTermThemes/windowsterminal/Unikitty.json</file>
+    <file>KodoTermThemes/windowsterminal/Urple.json</file>
+    <file>KodoTermThemes/windowsterminal/Vague.json</file>
+    <file>KodoTermThemes/windowsterminal/Vaughn.json</file>
+    <file>KodoTermThemes/windowsterminal/Vercel.json</file>
+    <file>KodoTermThemes/windowsterminal/Vesper.json</file>
+    <file>KodoTermThemes/windowsterminal/Vibrant Ink.json</file>
+    <file>KodoTermThemes/windowsterminal/Vimbones.json</file>
+    <file>KodoTermThemes/windowsterminal/Violet Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Violet Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Violite.json</file>
+    <file>KodoTermThemes/windowsterminal/Warm Neon.json</file>
+    <file>KodoTermThemes/windowsterminal/Wez.json</file>
+    <file>KodoTermThemes/windowsterminal/Whimsy.json</file>
+    <file>KodoTermThemes/windowsterminal/Wild Cherry.json</file>
+    <file>KodoTermThemes/windowsterminal/Wilmersdorf.json</file>
+    <file>KodoTermThemes/windowsterminal/Wombat.json</file>
+    <file>KodoTermThemes/windowsterminal/Wryan.json</file>
+    <file>KodoTermThemes/windowsterminal/Xcode Dark hc.json</file>
+    <file>KodoTermThemes/windowsterminal/Xcode Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Xcode Light hc.json</file>
+    <file>KodoTermThemes/windowsterminal/Xcode Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Xcode WWDC.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenbones Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenbones Light.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenbones.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenburn.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenburned.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenwritten Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/Zenwritten Light.json</file>
+    <file>KodoTermThemes/windowsterminal/branch.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Dark Background.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Default.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Light Background.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Pastel Dark Background.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Smoooooth.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Solarized Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Solarized Light.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Tango Dark.json</file>
+    <file>KodoTermThemes/windowsterminal/iTerm2 Tango Light.json</file>
+    <file>KodoTermThemes/windowsterminal/novmbr.json</file>
+    <file>KodoTermThemes/windowsterminal/owl.json</file>
+    <file>KodoTermThemes/windowsterminal/traffic.json</file>
+    <file>KodoTermThemes/windowsterminal/urban.json</file>
+</qresource>
+</RCC>

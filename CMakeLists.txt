@@ -8,6 +8,7 @@ project(codoterm LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 option(BUILD_EXAMPLES "Build the examples" ON)
@@ -43,6 +44,7 @@ set(KODOTERM_SOURCES
     include/KodoTerm/KodoTerm.hpp
     src/PtyProcess.cpp
     src/PtyProcess.h
+    KodoTermThemes.qrc
 )
 
 if(UNIX)
