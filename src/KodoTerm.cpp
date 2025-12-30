@@ -4,16 +4,10 @@
 #include "KodoTerm/KodoTerm.hpp"
 #include "PtyProcess.h"
 
-#include <QKeyEvent>
-#include <QPainter>
-
-#include <cerrno>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
 #include <vterm.h>
 
+#include <QKeyEvent>
+#include <QPainter>
 #include <QApplication>
 #include <QBuffer>
 #include <QClipboard>
