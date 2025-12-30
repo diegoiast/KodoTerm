@@ -8,16 +8,17 @@
 #include <QKeyEvent>
 
 #include <vterm.h>
-#include <unistd.h>
-#include <termios.h>
-#include <sys/ioctl.h>
+//#include <unistd.h>
+//#include <termios.h>
+//#include <sys/ioctl.h>
+
 #include <fcntl.h>
 #include <cerrno>
 
 static void output_callback(const char *s, size_t len, void *user) {
     int fd = *static_cast<int*>(user);
     if (fd >= 0) {
-        ::write(fd, s, len);
+        //::write(fd, s, len);
     }
 }
 
@@ -70,8 +71,16 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 }
 
 KodoTerm::~KodoTerm() {
-    if (m_vterm) vterm_free(m_vterm);
-    //if (m_masterFd >= 0) ::close(m_masterFd);
+    if (m_vterm) vterm_free(m_vterm);   
+    
+    qDebug() << "Killing KodoTerm";
+    if (m_pty) {
+        qDebug() << "Closing terminal"; 
+        disconnect(m_pty, nullptr, this, nullptr);
+        m_pty->kill();
+        m_pty = nullptr;
+        qDebug() << "Closing terminal - DONE"; 
+    }
 }
 
 void KodoTerm::setupPty() {
@@ -87,7 +96,8 @@ void KodoTerm::setupPty() {
 
     QString program;
 #ifdef Q_OS_WIN
-    program = "powershell.exe"; // or cmd.exe
+    program = "powershell.exe -NoLogo"; // or cmd.exe
+    //program = "cmd.exe";
 #else
     program = "/bin/bash";
 #endif

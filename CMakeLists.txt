@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(codoterm LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
@@ -77,7 +77,7 @@ if(BUILD_EXAMPLES)
     #    target_link_libraries(codoterm PRIVATE ${UTIL_LIB})
     #endif()
     
-    add_executable(KodoTermDemo
+    add_executable(KodoTermDemo WIN32
       examples/main.cpp
     )
     target_link_libraries(KodoTermDemo PRIVATE
