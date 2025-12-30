@@ -6,6 +6,7 @@
 #include <QFont>
 #include <QScrollBar>
 #include <QSocketNotifier>
+#include <QTimer>
 #include <QWidget>
 #include <deque>
 #include <vector>
@@ -56,6 +57,7 @@ class KodoTerm : public QWidget {
     // VTerm callbacks
     static int onDamage(VTermRect rect, void *user);
     static int onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user);
+    static int onSetTermProp(VTermProp prop, VTermValue *val, void *user);
     static int onSbPushLine(int cols, const VTermScreenCell *cells, void *user);
     static int onSbPopLine(int cols, VTermScreenCell *cells, void *user);
 
@@ -80,6 +82,11 @@ class KodoTerm : public QWidget {
     int m_cursorRow = 0;
     int m_cursorCol = 0;
     bool m_cursorVisible = true;
+    bool m_cursorBlink = false;
+    int m_cursorShape = 1; // VTERM_PROP_CURSORSHAPE_BLOCK
+    bool m_cursorBlinkState = true;
+    bool m_altScreen = false;
+    QTimer *m_cursorBlinkTimer = nullptr;
 
     QScrollBar *m_scrollBar = nullptr;
     std::deque<SavedLine> m_scrollback;

@@ -46,6 +46,15 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     m_scrollBar->setRange(0, 0);
     connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
 
+    m_cursorBlinkTimer = new QTimer(this);
+    m_cursorBlinkTimer->setInterval(500);
+    connect(m_cursorBlinkTimer, &QTimer::timeout, this, [this]() {
+        if (m_cursorBlink) {
+            m_cursorBlinkState = !m_cursorBlinkState;
+            update();
+        }
+    });
+
     m_vterm = vterm_new(25, 80);
     if (!m_vterm) {
         return;
@@ -61,7 +70,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     static VTermScreenCallbacks callbacks = {.damage = &KodoTerm::onDamage,
                                              .moverect = nullptr,
                                              .movecursor = &KodoTerm::onMoveCursor,
-                                             .settermprop = nullptr,
+                                             .settermprop = &KodoTerm::onSetTermProp,
                                              .bell = nullptr,
                                              .resize = nullptr,
                                              .sb_pushline = &KodoTerm::onSbPushLine,
@@ -141,6 +150,9 @@ int KodoTerm::onSbPopLine(int cols, VTermScreenCell *cells, void *user) {
 }
 
 int KodoTerm::pushScrollback(int cols, const VTermScreenCell *cells) {
+    if (m_altScreen) {
+        return 0;
+    }
     SavedLine line;
     line.reserve(cols);
     for (int i = 0; i < cols; ++i) {
@@ -193,7 +205,8 @@ void KodoTerm::updateTerminalSize() {
     }
 
     int rows = height() / m_cellSize.height();
-    int cols = (width() - m_scrollBar->sizeHint().width()) / m_cellSize.width();
+    int sbWidth = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0;
+    int cols = (width() - sbWidth) / m_cellSize.width();
     if (rows <= 0) {
         rows = 1;
     }
@@ -207,7 +220,6 @@ void KodoTerm::updateTerminalSize() {
             vterm_screen_flush_damage(m_vtermScreen);
         }
     }
-
     if (m_pty) {
         m_pty->resize(
             QSize(cols, rows)); // Check if PtyProcess expects cols/rows or width/height pixels?
@@ -245,6 +257,43 @@ int KodoTerm::onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *use
     if (currentScrollPos == scrollbackLines) {
         widget->update();
     }
+    return 1;
+}
+
+int KodoTerm::onSetTermProp(VTermProp prop, VTermValue *val, void *user) {
+    auto *widget = static_cast<KodoTerm *>(user);
+    switch (prop) {
+    case VTERM_PROP_CURSORVISIBLE:
+        widget->m_cursorVisible = val->boolean;
+        break;
+    case VTERM_PROP_CURSORBLINK:
+        widget->m_cursorBlink = val->boolean;
+        if (widget->m_cursorBlink) {
+            widget->m_cursorBlinkTimer->start();
+        } else {
+            widget->m_cursorBlinkTimer->stop();
+            widget->m_cursorBlinkState = true;
+        }
+        break;
+    case VTERM_PROP_CURSORSHAPE:
+        widget->m_cursorShape = val->number;
+        break;
+    case VTERM_PROP_ALTSCREEN:
+        widget->m_altScreen = val->boolean;
+        if (widget->m_altScreen) {
+            widget->m_scrollBar->hide();
+        } else {
+            widget->m_scrollBar->show();
+        }
+        widget->updateTerminalSize();
+        break;
+    case VTERM_PROP_TITLE:
+        widget->setWindowTitle(QString::fromUtf8(val->string.str, (int)val->string.len));
+        break;
+    default:
+        break;
+    }
+    widget->update();
     return 1;
 }
 
@@ -447,11 +496,27 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
         }
     }
 
-    if (m_cursorVisible && currentScrollPos == scrollbackLines) {
+    if (m_cursorVisible && currentScrollPos == scrollbackLines &&
+        (!m_cursorBlink || m_cursorBlinkState)) {
         QRect cursorRect(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(),
                          m_cellSize.width(), m_cellSize.height());
+
         painter.setCompositionMode(QPainter::CompositionMode_Difference);
-        painter.fillRect(cursorRect, Qt::white);
+        switch (m_cursorShape) {
+        case 2: // Underline
+        case 3: // VTERM_PROP_CURSORSHAPE_UNDERLINE
+            painter.fillRect(cursorRect.x(), cursorRect.y() + cursorRect.height() - 2,
+                             cursorRect.width(), 2, Qt::white);
+            break;
+        case 4: // Bar
+        case 5: // VTERM_PROP_CURSORSHAPE_BAR_LEFT
+            painter.fillRect(cursorRect.x(), cursorRect.y(), 2, cursorRect.height(), Qt::white);
+            break;
+        case 1: // Block
+        default:
+            painter.fillRect(cursorRect, Qt::white);
+            break;
+        }
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     }
 }
