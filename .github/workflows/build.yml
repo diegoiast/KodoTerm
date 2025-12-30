@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master", "main" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -15,8 +15,9 @@ jobs:
       matrix:
         config:
           - { name: "Linux (x64)",       os: ubuntu-latest }
+          - { name: "Linux (ARM64)",     os: ubuntu-latest }
           - { name: "Windows (x64)",     os: windows-latest }
-          - { name: "macOS (Intel)",     os: macos-13 }
+          - { name: "Windows (ARM64)",   os: windows-latest }
           - { name: "macOS (ARM64)",     os: macos-14 }
 
     steps:
@@ -27,9 +28,6 @@ jobs:
         with:
           version: '6.6.0'
           cache: true
-          # For macOS M1/ARM64 (macos-14), Qt is installed via brew or standard paths often, 
-          # but jurplel action handles arch detection mostly. 
-          # Note: version 6.6.0+ is required for good Apple Silicon support.
 
       - name: Install Linux Deps
         if: runner.os == 'Linux'
