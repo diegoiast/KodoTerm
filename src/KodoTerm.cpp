@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QBuffer>
 #include <QClipboard>
+#include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -222,6 +223,8 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     }
     vterm_screen_enable_altscreen(m_vtermScreen, 1);
 
+    m_cwd = QDir::currentPath();
+
     static VTermScreenCallbacks callbacks = {.damage = &KodoTerm::onDamage,
                                              .moverect = nullptr,
                                              .movecursor = &KodoTerm::onMoveCursor,
@@ -324,18 +327,31 @@ int KodoTerm::onOsc(int command, VTermStringFragment frag, void *user) {
     widget->m_oscBuffer.append(frag.str, frag.len);
     if (frag.final) {
         if (command == 7) {
-            QString url = QString::fromUtf8(widget->m_oscBuffer);
-            if (url.startsWith("file://")) {
-                QUrl qurl(url);
-                QString path = qurl.path();
-                if (widget->m_cwd != path) {
+            QString urlStr = QString::fromUtf8(widget->m_oscBuffer);
+            // Robust cleanup of trailing control/separator characters
+            while (!urlStr.isEmpty() && (urlStr.endsWith(';') || urlStr.endsWith('\a') ||
+                                         urlStr.endsWith('\r') || urlStr.endsWith('\n'))) {
+                urlStr.chop(1);
+            }
+
+            if (urlStr.startsWith("file://")) {
+                QUrl qurl(urlStr);
+                QString path = qurl.toLocalFile();
+                if (path.isEmpty()) {
+                    path = qurl.path();
+                }
+                // Handle potential trailing characters from malformed sequences
+                if (path.endsWith(';') || path.endsWith('.')) {
+                    path.chop(1);
+                }
+                if (!path.isEmpty() && widget->m_cwd != path) {
                     widget->m_cwd = path;
                     emit widget->cwdChanged(path);
                 }
             } else {
-                if (widget->m_cwd != url) {
-                    widget->m_cwd = url;
-                    emit widget->cwdChanged(url);
+                if (!urlStr.isEmpty() && widget->m_cwd != urlStr) {
+                    widget->m_cwd = urlStr;
+                    emit widget->cwdChanged(urlStr);
                 }
             }
         }
@@ -664,81 +680,11 @@ void KodoTerm::resetTerminal() {
     clearScrollback();
 }
 
-void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
-                                 TerminalTheme::ThemeFormat format) {
-    QList<TerminalTheme::ThemeInfo> themes;
-    QStringList filters;
-    if (format == TerminalTheme::ThemeFormat::Konsole) {
-        filters << "*.colorscheme";
-    } else {
-        filters << "*.json";
-    }
-
-    QDirIterator it(dirPath, filters, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        TerminalTheme::ThemeInfo info;
-        info.path = it.filePath();
-        info.format = format;
-        if (format == TerminalTheme::ThemeFormat::Konsole) {
-            QFile file(info.path);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                QTextStream in(&file);
-                while (!in.atEnd()) {
-                    QString line = in.readLine().trimmed();
-                    if (line.startsWith("Description=", Qt::CaseInsensitive)) {
-                        info.name = line.mid(12).trimmed();
-                        break;
-                    }
-                }
-            }
-            if (info.name.isEmpty()) {
-                info.name = QFileInfo(info.path).baseName();
-            }
-        } else {
-            QFile file(info.path);
-            if (file.open(QIODevice::ReadOnly)) {
-                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-                info.name = doc.object().value("name").toString();
-            }
-            if (info.name.isEmpty()) {
-                info.name = QFileInfo(info.path).baseName();
-            }
-        }
-        themes.append(info);
-    }
-
-    std::sort(themes.begin(), themes.end(), [](const auto &a, const auto &b) {
-        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
-    });
-
-    auto addThemeAction = [this](QMenu *m, const TerminalTheme::ThemeInfo &info) {
-        m->addAction(info.name, this, [this, info]() {
-            if (info.format == TerminalTheme::ThemeFormat::Konsole) {
-                setTheme(TerminalTheme::loadKonsoleTheme(info.path));
-            } else {
-                setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
-            }
-        });
-    };
-
-    if (themes.size() < 26) {
-        for (const auto &info : themes) {
-            addThemeAction(parentMenu, info);
-        }
-    } else {
-        QMap<QString, QMenu *> subMenus;
-        for (const auto &info : themes) {
-            QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
-            if (!firstLetterChar.isLetter()) {
-                firstLetterChar = QChar('#');
-            }
-
-            QString firstLetter(firstLetterChar);
-            if (!subMenus.contains(firstLetter)) {
-                subMenus[firstLetter] = parentMenu->addMenu(firstLetter);
-            }
-            addThemeAction(subMenus[firstLetter], info);
+void KodoTerm::openFileBrowser() {
+    if (!m_cwd.isEmpty()) {
+        QDir dir(m_cwd);
+        if (dir.exists()) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
         }
     }
 }
@@ -759,7 +705,15 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     menu->addSeparator();
     menu->addAction(tr("Clear Scrollback"), this, &KodoTerm::clearScrollback);
     menu->addAction(tr("Reset"), this, &KodoTerm::resetTerminal);
+
     menu->addSeparator();
+
+    auto *openBrowserAction = menu->addAction(tr("Open current directory in file browser"), this,
+                                              &KodoTerm::openFileBrowser);
+    openBrowserAction->setEnabled(!m_cwd.isEmpty() && QDir(m_cwd).exists());
+
+    menu->addSeparator();
+
     menu->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn);
     menu->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut);
     menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
@@ -1005,3 +959,82 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 }
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
+
+void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
+                                 TerminalTheme::ThemeFormat format) {
+    QList<TerminalTheme::ThemeInfo> themes;
+    QStringList filters;
+    if (format == TerminalTheme::ThemeFormat::Konsole) {
+        filters << "*.colorscheme";
+    } else {
+        filters << "*.json";
+    }
+
+    QDirIterator it(dirPath, filters, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        TerminalTheme::ThemeInfo info;
+        info.path = it.filePath();
+        info.format = format;
+        if (format == TerminalTheme::ThemeFormat::Konsole) {
+            QFile file(info.path);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&file);
+                while (!in.atEnd()) {
+                    QString line = in.readLine().trimmed();
+                    if (line.startsWith("Description=", Qt::CaseInsensitive)) {
+                        info.name = line.mid(12).trimmed();
+                        break;
+                    }
+                }
+            }
+            if (info.name.isEmpty()) {
+                info.name = QFileInfo(info.path).baseName();
+            }
+        } else {
+            QFile file(info.path);
+            if (file.open(QIODevice::ReadOnly)) {
+                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+                info.name = doc.object().value("name").toString();
+            }
+            if (info.name.isEmpty()) {
+                info.name = QFileInfo(info.path).baseName();
+            }
+        }
+        themes.append(info);
+    }
+
+    std::sort(themes.begin(), themes.end(), [](const auto &a, const auto &b) {
+        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
+    });
+
+    auto addThemeAction = [this](QMenu *m, const TerminalTheme::ThemeInfo &info) {
+        m->addAction(info.name, this, [this, info]() {
+            if (info.format == TerminalTheme::ThemeFormat::Konsole) {
+                setTheme(TerminalTheme::loadKonsoleTheme(info.path));
+            } else {
+                setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
+            }
+        });
+    };
+
+    if (themes.size() < 26) {
+        for (const auto &info : themes) {
+            addThemeAction(parentMenu, info);
+        }
+    } else {
+        QMap<QString, QMenu *> subMenus;
+        for (const auto &info : themes) {
+            QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
+            if (!firstLetterChar.isLetter()) {
+                firstLetterChar = QChar('#');
+            }
+
+            QString firstLetter(firstLetterChar);
+            if (!subMenus.contains(firstLetter)) {
+                subMenus[firstLetter] = parentMenu->addMenu(firstLetter);
+            }
+            addThemeAction(subMenus[firstLetter], info);
+        }
+    }
+}

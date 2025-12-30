@@ -16,7 +16,7 @@
 
 4. Integration & Management
    4.1. Session Logging: Option to record input and output to a text file.
-   4.2. Working Directory Tracking: Monitor PTY's CWD for "Open File Browser" or "New Tab" features.
+   4.2. Working Directory Tracking: Monitor PTY's CWD for "Open File Browser" or "New Tab" features. (monitor is done, opening dir in file browser is broken).
    4.3. Bell Support: Visual or audible alerts for the \a (bell) character.
 
 5. Windows 

@@ -82,10 +82,13 @@ class KodoTerm : public QWidget {
     void selectAll();
     void clearScrollback();
     void resetTerminal();
+    void openFileBrowser();
 
     void zoomIn();
     void zoomOut();
     void resetZoom();
+
+    const QString &cwd() const { return m_cwd; }
 
     bool copyOnSelect() const { return m_copyOnSelect; }
     void setCopyOnSelect(bool enable) { m_copyOnSelect = enable; }
