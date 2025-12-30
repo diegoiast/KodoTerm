@@ -44,11 +44,11 @@ PtyProcessWin::PtyProcessWin(QObject *parent) : PtyProcess(parent) {
 }
 
 PtyProcessWin::~PtyProcessWin() {
-    kill();
     if (m_hPC != INVALID_HANDLE_VALUE) {
         ClosePseudoConsole(m_hPC);
         m_hPC = INVALID_HANDLE_VALUE;
     }
+    kill();
     if (m_hPipeIn != INVALID_HANDLE_VALUE) {
         CloseHandle(m_hPipeIn);
     }

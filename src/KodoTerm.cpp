@@ -244,6 +244,9 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 }
 
 KodoTerm::~KodoTerm() {
+    if (m_pty) {
+        m_pty->kill();
+    }
     if (m_vterm) {
         vterm_free(m_vterm);
     }
