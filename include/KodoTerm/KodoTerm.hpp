@@ -40,11 +40,18 @@ class KodoTerm : public QWidget {
     void pageDown();
     void copyToClipboard();
 
+    void zoomIn();
+    void zoomOut();
+    void resetZoom();
+
     bool copyOnSelect() const { return m_copyOnSelect; }
     void setCopyOnSelect(bool enable) { m_copyOnSelect = enable; }
 
     bool pasteOnMiddleClick() const { return m_pasteOnMiddleClick; }
     void setPasteOnMiddleClick(bool enable) { m_pasteOnMiddleClick = enable; }
+
+    bool mouseWheelZoom() const { return m_mouseWheelZoom; }
+    void setMouseWheelZoom(bool enable) { m_mouseWheelZoom = enable; }
 
   private:
     void setupPty();
@@ -101,4 +108,5 @@ class KodoTerm : public QWidget {
     bool m_copyOnSelect = true;
 #endif
     bool m_pasteOnMiddleClick = true;
+    bool m_mouseWheelZoom = true;
 };

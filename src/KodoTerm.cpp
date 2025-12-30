@@ -200,6 +200,12 @@ int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
 }
 
 void KodoTerm::updateTerminalSize() {
+    QFontMetrics fm(m_font);
+    m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
+    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
+        m_cellSize = QSize(10, 20);
+    }
+
     if (m_cellSize.isEmpty()) {
         return;
     }
@@ -304,7 +310,17 @@ void KodoTerm::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
 }
 
-void KodoTerm::wheelEvent(QWheelEvent *event) { m_scrollBar->event(event); }
+void KodoTerm::wheelEvent(QWheelEvent *event) {
+    if (m_mouseWheelZoom && (event->modifiers() & Qt::ControlModifier)) {
+        if (event->angleDelta().y() > 0) {
+            zoomIn();
+        } else if (event->angleDelta().y() < 0) {
+            zoomOut();
+        }
+        return;
+    }
+    m_scrollBar->event(event);
+}
 
 void KodoTerm::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
@@ -359,7 +375,6 @@ bool KodoTerm::isSelected(int row, int col) const {
     if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
         std::swap(start, end);
     }
-
     if (row < start.row || row > end.row) {
         return false;
     }
@@ -421,6 +436,32 @@ void KodoTerm::copyToClipboard() {
     }
     QString text = getTextRange(m_selectionStart, m_selectionEnd);
     QApplication::clipboard()->setText(text);
+}
+
+void KodoTerm::zoomIn() {
+    qreal size = m_font.pointSizeF();
+    if (size <= 0)
+        size = m_font.pointSize();
+    m_font.setPointSizeF(size + 1.0);
+    updateTerminalSize();
+    update();
+}
+
+void KodoTerm::zoomOut() {
+    qreal size = m_font.pointSizeF();
+    if (size <= 0)
+        size = m_font.pointSize();
+    if (size > 1.0) {
+        m_font.setPointSizeF(size - 1.0);
+        updateTerminalSize();
+        update();
+    }
+}
+
+void KodoTerm::resetZoom() {
+    m_font.setPointSize(10);
+    updateTerminalSize();
+    update();
 }
 
 void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell,
@@ -534,7 +575,6 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
     }
 
     int key = event->key();
-
     if (key >= Qt::Key_F1 && key <= Qt::Key_F12) {
         vterm_keyboard_key(m_vterm, (VTermKey)(VTERM_KEY_FUNCTION(1 + key - Qt::Key_F1)), mod);
     } else {
@@ -578,9 +618,22 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
                 vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, mod);
             }
             break;
-        default:
-            if ((event->modifiers() & Qt::ControlModifier) &&
-                (event->modifiers() & Qt::ShiftModifier)) {
+                default:
+                    if (event->modifiers() & Qt::ControlModifier) {
+                        if (key == Qt::Key_Plus || key == Qt::Key_Equal) {
+                            zoomIn();
+                            return;
+                        } else if (key == Qt::Key_Minus) {
+                            zoomOut();
+                            return;
+                        } else if (key == Qt::Key_0) {
+                            resetZoom();
+                            return;
+                        }
+                    }
+        
+                    if ((event->modifiers() & Qt::ControlModifier) && (event->modifiers() & Qt::ShiftModifier)) {
+        
                 if (key == Qt::Key_C) {
                     copyToClipboard();
                     return;
@@ -592,7 +645,6 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
                     return;
                 }
             }
-
             if ((mod & VTERM_MOD_CTRL) && key >= Qt::Key_A && key <= Qt::Key_Z) {
                 int charCode = key - Qt::Key_A + 1;
                 vterm_keyboard_unichar(m_vterm, charCode, VTERM_MOD_NONE);

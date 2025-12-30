@@ -1,0 +1,20 @@
+1. Visual & UX Enhancements
+   1.1. Theming Support: Implement a system to switch between color schemes (e.g., Solarized, Monokai, Nord).
+   1.2. Dynamic Font Zooming: Add handlers for Ctrl + +, Ctrl + -, and Ctrl + 0 to adjust font size on the fly.(Initial implementation done)
+   1.3. Alternative Screen Buffer Logic: Automatically hide/disable scrollbar in apps like vim/htop. (Initial implementation done)
+   1.4. Cursor Customization: Support different cursor shapes (Block, Underline, Bar) and blinking. (Initial implementation done)
+
+2. Interactive Features
+   2.1. URL Detection: Scan text for URLs and make them clickable (Ctrl + Click).
+   2.2. Search Functionality: A search bar (Ctrl+F) to find text in visible area and scrollback.
+   2.3. Right-Click Context Menu: Menu with Copy, Paste, Select All, Clear Scrollback, and Reset Terminal.
+
+3. Advanced Terminal Capabilities
+   3.1. OSC Sequence Support: Handle escape sequences for window title, CWD, and dynamic colors. (Title support started)
+   3.2. Graphics (Sixel) Support: Implement rendering for Sixel graphics via libvterm.
+   3.3. Text Reflow: Adjust text in scrollback buffer when the window is resized horizontally.
+
+4. Integration & Management
+   4.1. Session Logging: Option to record input and output to a text file.
+   4.2. Working Directory Tracking: Monitor PTY's CWD for "Open File Browser" or "New Tab" features.
+   4.3. Bell Support: Visual or audible alerts for the \a (bell) character.
