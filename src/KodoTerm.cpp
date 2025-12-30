@@ -794,6 +794,7 @@ void KodoTerm::clearScrollback() {
 
 void KodoTerm::resetTerminal() {
     vterm_screen_reset(m_vtermScreen, 1);
+    m_flowControlStopped = false;
     clearScrollback();
 }
 
@@ -988,6 +989,20 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
         painter.fillRect(rect(), Qt::white);
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     }
+
+    if (m_flowControlStopped) {
+        QString msg = tr("Terminal stopped (Ctrl+S). Press Ctrl+Q to resume.");
+        QFont msgFont = font();
+        msgFont.setBold(true);
+        painter.setFont(msgFont);
+        QFontMetrics fmm(msgFont);
+        QRect msgRect = fmm.boundingRect(msg).adjusted(-5, -2, 5, 2);
+        msgRect.moveCenter(QPoint(width() / 2, msgRect.height() / 2 + 10));
+
+        painter.fillRect(msgRect, Qt::yellow);
+        painter.setPen(Qt::black);
+        painter.drawText(msgRect, Qt::AlignCenter, msg);
+    }
 }
 
 void KodoTerm::keyPressEvent(QKeyEvent *event) {
@@ -1092,6 +1107,13 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
                 }
             }
             if ((mod & VTERM_MOD_CTRL) && key >= Qt::Key_A && key <= Qt::Key_Z) {
+                if (key == Qt::Key_S) {
+                    m_flowControlStopped = true;
+                    update();
+                } else if (key == Qt::Key_Q) {
+                    m_flowControlStopped = false;
+                    update();
+                }
                 int charCode = key - Qt::Key_A + 1;
                 vterm_keyboard_unichar(m_vterm, charCode, VTERM_MOD_NONE);
             } else if (!event->text().isEmpty()) {
