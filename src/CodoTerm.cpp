@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Author: Diego Iastrubni <diegoiast@gmail.com>
+<<<<<<<< HEAD:KodoTerm.cpp
 #include "KodoTerm.hpp"
+========
+
+#include <codoterm/CodoTerm.h>
+>>>>>>>> 838ddd2 (Reorder project):src/CodoTerm.cpp
 
 #include <QPainter>
 #include <QKeyEvent>

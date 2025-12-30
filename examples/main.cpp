@@ -3,7 +3,7 @@
 
 #include <QApplication>
 #include <QMainWindow>
-#include "KodoTerm.hpp"
+#include <KodoTerm/KodoTerm.hpp>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     auto *console = new KodoTerm(&mainWindow);
     mainWindow.setCentralWidget(console);
     mainWindow.resize(800, 600);
-    mainWindow.setWindowTitle("Qt6 Console Widget with LibVTerm");
+    mainWindow.setWindowTitle("KodoTerm example");
     mainWindow.show();
     
     return app.exec();

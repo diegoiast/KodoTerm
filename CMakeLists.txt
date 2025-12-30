@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+option(BUILD_EXAMPLES "Build the examples" ON)
 
 include(FetchContent)
 
@@ -32,15 +33,32 @@ target_include_directories(vterm PUBLIC
     "${libvterm_SOURCE_DIR}/src"
 )
 
-add_executable(KodoTermDemo
-  main.cpp
-  KodoTerm.cpp
-  KodoTerm.hpp
+add_library(KodoTerm
+    src/KodoTerm.cpp
+    include/KodoTerm/KodoTerm.hpp
 )
+target_include_directories(KodoTerm PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(KodoTerm PUBLIC
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    vterm
+)
+add_library(KodoTerm::KodoTerm ALIAS KodoTerm)
 
+
+if(BUILD_EXAMPLES)
+add_executable(KodoTermDemo
+  examples/main.cpp
+)
 target_link_libraries(KodoTermDemo PRIVATE
   Qt6::Core
   Qt6::Gui
   Qt6::Widgets
   vterm
+  KodoTerm::KodoTerm
 )
+endif()
