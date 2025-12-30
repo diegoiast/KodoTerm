@@ -10,7 +10,7 @@
 class PtyProcessUnix : public PtyProcess {
     Q_OBJECT
 
-public:
+  public:
     explicit PtyProcessUnix(QObject *parent = nullptr);
     ~PtyProcessUnix() override;
 
@@ -19,10 +19,10 @@ public:
     void resize(const QSize &size) override;
     void kill() override;
 
-private slots:
+  private slots:
     void onReadyRead();
 
-private:
+  private:
     int m_masterFd = -1;
     pid_t m_pid = -1;
     QSocketNotifier *m_notifier = nullptr;

@@ -4,13 +4,13 @@
 #pragma once
 
 #include "PtyProcess.h"
-#include <windows.h>
 #include <QThread>
+#include <windows.h>
 
 class PtyProcessWin : public PtyProcess {
     Q_OBJECT
 
-public:
+  public:
     explicit PtyProcessWin(QObject *parent = nullptr);
     ~PtyProcessWin() override;
 
@@ -19,15 +19,15 @@ public:
     void resize(const QSize &size) override;
     void kill() override;
 
-private slots:
+  private slots:
     void onReadThreadData(const QByteArray &data);
 
-private:
+  private:
     HPCON m_hPC = INVALID_HANDLE_VALUE;
     HANDLE m_hPipeIn = INVALID_HANDLE_VALUE;
     HANDLE m_hPipeOut = INVALID_HANDLE_VALUE;
     PROCESS_INFORMATION m_pi;
-    
+
     class ReaderThread;
     ReaderThread *m_readerThread = nullptr;
 };

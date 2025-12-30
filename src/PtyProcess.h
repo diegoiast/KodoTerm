@@ -9,7 +9,7 @@
 class PtyProcess : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit PtyProcess(QObject *parent = nullptr) : QObject(parent) {}
     virtual ~PtyProcess() = default;
 
@@ -19,9 +19,9 @@ public:
     virtual void kill() = 0;
 
     // Factory method
-    static PtyProcess* create(QObject *parent = nullptr);
+    static PtyProcess *create(QObject *parent = nullptr);
 
-signals:
+  signals:
     void readyRead(const QByteArray &data);
     void finished(int exitCode, int exitStatus);
 };

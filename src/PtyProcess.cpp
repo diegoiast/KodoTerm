@@ -10,7 +10,7 @@
 #include "PtyProcess_win.h"
 #endif
 
-PtyProcess* PtyProcess::create(QObject *parent) {
+PtyProcess *PtyProcess::create(QObject *parent) {
 #if defined(Q_OS_UNIX)
     return new PtyProcessUnix(parent);
 #elif defined(Q_OS_WIN)

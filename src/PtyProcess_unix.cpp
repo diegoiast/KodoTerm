@@ -3,22 +3,21 @@
 
 #include "PtyProcess_unix.h"
 
-#include <QDebug>
 #include <QCoreApplication>
+#include <QDebug>
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <util.h>
 #else
 #include <pty.h>
 #endif
-#include <unistd.h>
-#include <termios.h>
-#include <sys/ioctl.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <signal.h>
-#include <cerrno>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
 
-PtyProcessUnix::PtyProcessUnix(QObject *parent) : PtyProcess(parent) {
-}
+PtyProcessUnix::PtyProcessUnix(QObject *parent) : PtyProcess(parent) {}
 
 PtyProcessUnix::~PtyProcessUnix() {
     kill();
@@ -28,7 +27,8 @@ PtyProcessUnix::~PtyProcessUnix() {
     }
 }
 
-bool PtyProcessUnix::start(const QString &program, const QStringList &arguments, const QSize &size) {
+bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
+                           const QSize &size) {
     struct winsize ws;
     ws.ws_row = (unsigned short)size.height();
     ws.ws_col = (unsigned short)size.width();
@@ -45,39 +45,39 @@ bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
     if (pid == 0) {
         // Child
         setenv("TERM", "xterm-256color", 1);
-        
+
         // Prepare args
         // If program is /bin/bash, args might be empty
         // execl expects path, arg0, ..., nullptr
         // For simplicity, we just exec bash like before if program is bash
         // But let's support generic execvp
-        
+
         // Convert args to char* array
-        std::vector<char*> args;
+        std::vector<char *> args;
         QByteArray progBytes = program.toLocal8Bit();
         args.push_back(progBytes.data());
-        
+
         // Helper to keep storage alive
         std::vector<QByteArray> storage;
         storage.reserve(arguments.size());
-        
+
         for (const auto &arg : arguments) {
             storage.push_back(arg.toLocal8Bit());
             args.push_back(storage.back().data());
         }
         args.push_back(nullptr);
-        
+
         execvp(program.toLocal8Bit().constData(), args.data());
-        
+
         // If execvp returns, it failed
         _exit(1);
     } else {
         // Parent
         m_pid = pid;
-        
+
         m_notifier = new QSocketNotifier(m_masterFd, QSocketNotifier::Read, this);
         connect(m_notifier, &QSocketNotifier::activated, this, &PtyProcessUnix::onReadyRead);
-        
+
         return true;
     }
 }
