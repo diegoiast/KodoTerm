@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { name: "Linux (x64)",       os: ubuntu-latest }
+          - { name: "Windows (x64)",     os: windows-latest }
+          - { name: "macOS (Intel)",     os: macos-13 }
+          - { name: "macOS (ARM64)",     os: macos-14 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.6.0'
+          cache: true
+          # For macOS M1/ARM64 (macos-14), Qt is installed via brew or standard paths often, 
+          # but jurplel action handles arch detection mostly. 
+          # Note: version 6.6.0+ is required for good Apple Silicon support.
+
+      - name: Install Linux Deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
