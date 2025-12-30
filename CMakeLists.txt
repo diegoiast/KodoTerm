@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(codoterm LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -53,7 +53,7 @@ if(UNIX)
         src/PtyProcess_unix.h
     )
     # Check for util library (needed for forkpty on some systems)
-    find_library(UTIL_LIB util)
+    #find_library(UTIL_LIB util)
 elseif(WIN32)
     list(APPEND KODOTERM_SOURCES 
         src/PtyProcess_win.cpp 
