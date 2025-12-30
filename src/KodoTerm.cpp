@@ -18,6 +18,7 @@
 #include <QClipboard>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QUrl>
 
 static void output_callback(const char *s, size_t len, void *user) {
     int fd = *static_cast<int *>(user);
@@ -81,6 +82,18 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 
     vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this);
     vterm_screen_reset(m_vtermScreen, 1);
+
+    VTermState *state = vterm_obtain_state(m_vterm);
+    static VTermStateFallbacks fallbacks = {
+        .control = nullptr,
+        .csi = nullptr,
+        .osc = &KodoTerm::onOsc,
+        .dcs = nullptr,
+        .apc = nullptr,
+        .pm = nullptr,
+        .sos = nullptr,
+    };
+    vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
 
     setFocusPolicy(Qt::StrongFocus);
     setupPty();
@@ -148,6 +161,34 @@ int KodoTerm::onSbPushLine(int cols, const VTermScreenCell *cells, void *user) {
 int KodoTerm::onSbPopLine(int cols, VTermScreenCell *cells, void *user) {
     auto *widget = static_cast<KodoTerm *>(user);
     return widget->popScrollback(cols, cells);
+}
+
+int KodoTerm::onOsc(int command, VTermStringFragment frag, void *user) {
+    auto *widget = static_cast<KodoTerm *>(user);
+    if (frag.initial) {
+        widget->m_oscBuffer.clear();
+    }
+    widget->m_oscBuffer.append(frag.str, frag.len);
+    if (frag.final) {
+        if (command == 7) {
+            QString url = QString::fromUtf8(widget->m_oscBuffer);
+            if (url.startsWith("file://")) {
+                QUrl qurl(url);
+                QString path = qurl.path();
+                if (widget->m_cwd != path) {
+                    widget->m_cwd = path;
+                    emit widget->cwdChanged(path);
+                }
+            } else {
+                if (widget->m_cwd != url) {
+                    widget->m_cwd = url;
+                    emit widget->cwdChanged(url);
+                }
+            }
+        }
+        widget->m_oscBuffer.clear();
+    }
+    return 1;
 }
 
 int KodoTerm::pushScrollback(int cols, const VTermScreenCell *cells) {
@@ -530,22 +571,25 @@ void KodoTerm::resetZoom() {
     update();
 }
 
+QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *state) const {
+    if (VTERM_COLOR_IS_RGB(&c)) {
+        return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);
+    } else if (VTERM_COLOR_IS_INDEXED(&c)) {
+        VTermColor rgb = c;
+        vterm_state_convert_color_to_rgb(state, &rgb);
+        return QColor(rgb.rgb.red, rgb.rgb.green, rgb.rgb.blue);
+    }
+    return Qt::white;
+}
+
 void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell,
                         bool selected) {
-    auto mapColor = [](const VTermColor &c, const VTermState *state) -> QColor {
-        if (VTERM_COLOR_IS_RGB(&c)) {
-            return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);
-        } else if (VTERM_COLOR_IS_INDEXED(&c)) {
-            VTermColor rgb = c;
-            vterm_state_convert_color_to_rgb(state, &rgb);
-            return QColor(rgb.rgb.red, rgb.rgb.green, rgb.rgb.blue);
-        }
-        return Qt::white;
-    };
-
     VTermState *state = vterm_obtain_state(m_vterm);
-    QColor fg = Qt::white;
-    QColor bg = Qt::black;
+    VTermColor vdefault_fg, vdefault_bg;
+    vterm_state_get_default_colors(state, &vdefault_fg, &vdefault_bg);
+
+    QColor fg = mapColor(vdefault_fg, state);
+    QColor bg = mapColor(vdefault_bg, state);
 
     if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
         fg = mapColor(cell.fg, state);
@@ -573,7 +617,13 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
 void KodoTerm::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
     painter.setFont(m_font);
-    painter.fillRect(rect(), Qt::black);
+
+    VTermState *state = vterm_obtain_state(m_vterm);
+    VTermColor vdefault_fg, vdefault_bg;
+    vterm_state_get_default_colors(state, &vdefault_fg, &vdefault_bg);
+    QColor defaultBg = mapColor(vdefault_bg, state);
+
+    painter.fillRect(rect(), defaultBg);
 
     int rows, cols;
     vterm_get_size(m_vterm, &rows, &cols);

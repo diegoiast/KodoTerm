@@ -35,6 +35,7 @@ class KodoTerm : public QWidget {
 
   signals:
     void contextMenuRequested(QMenu *menu, const QPoint &pos);
+    void cwdChanged(const QString &cwd);
 
   public slots:
     void onPtyReadyRead(const QByteArray &data);
@@ -66,6 +67,7 @@ class KodoTerm : public QWidget {
     void setupPty();
     void updateTerminalSize();
     void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected);
+    QColor mapColor(const VTermColor &c, const VTermState *state) const;
     QString getTextRange(VTermPos start, VTermPos end);
     bool isSelected(int row, int col) const;
     VTermPos mouseToPos(const QPoint &pos) const;
@@ -76,6 +78,7 @@ class KodoTerm : public QWidget {
     static int onSetTermProp(VTermProp prop, VTermValue *val, void *user);
     static int onSbPushLine(int cols, const VTermScreenCell *cells, void *user);
     static int onSbPopLine(int cols, VTermScreenCell *cells, void *user);
+    static int onOsc(int command, VTermStringFragment frag, void *user);
 
     int pushScrollback(int cols, const VTermScreenCell *cells);
     int popScrollback(int cols, VTermScreenCell *cells);
@@ -118,4 +121,6 @@ class KodoTerm : public QWidget {
 #endif
     bool m_pasteOnMiddleClick = true;
     bool m_mouseWheelZoom = true;
+    QString m_cwd;
+    QByteArray m_oscBuffer;
 };

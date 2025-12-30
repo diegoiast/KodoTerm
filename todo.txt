@@ -10,7 +10,7 @@
    2.3. Right-Click Context Menu: Menu with Copy, Paste, Select All, Clear Scrollback, and Reset Terminal. (Initial implementation done)
 
 3. Advanced Terminal Capabilities
-   3.1. OSC Sequence Support: Handle escape sequences for window title, CWD, and dynamic colors. (Title support started)
+   3.1. OSC Sequence Support: Handle escape sequences for window title, CWD, and dynamic colors. (DONE)
    3.2. Graphics (Sixel) Support: Implement rendering for Sixel graphics via libvterm.
    3.3. Text Reflow: Adjust text in scrollback buffer when the window is resized horizontally.
 
