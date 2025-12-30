@@ -39,47 +39,22 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
 }
 
 static VTermColor toVTermColor(const QColor &c) {
+
     VTermColor vc;
+
     vc.type = VTERM_COLOR_RGB;
+
     vc.rgb.red = c.red();
+
     vc.rgb.green = c.green();
+
     vc.rgb.blue = c.blue();
+
     return vc;
 }
 
-TerminalTheme TerminalTheme::breezeDark() {
-    return {"Breeze Dark",
-            QColor(252, 252, 252),
-            QColor(35, 38, 39),
-            {QColor(35, 38, 39), QColor(237, 21, 21), QColor(17, 209, 22), QColor(246, 116, 0),
-             QColor(29, 153, 243), QColor(155, 89, 182), QColor(26, 188, 156),
-             QColor(252, 252, 252), QColor(127, 140, 141), QColor(192, 57, 43),
-             QColor(28, 220, 154), QColor(253, 188, 75), QColor(61, 174, 233), QColor(142, 68, 173),
-             QColor(22, 160, 133), QColor(255, 255, 255)}};
-}
-
-TerminalTheme TerminalTheme::solarizedDark() {
-    return {"Solarized Dark",
-            QColor(131, 148, 150),
-            QColor(0, 43, 54),
-            {QColor(7, 54, 66), QColor(220, 50, 47), QColor(133, 153, 0), QColor(181, 137, 0),
-             QColor(38, 139, 210), QColor(211, 54, 130), QColor(42, 161, 152),
-             QColor(238, 232, 213), QColor(0, 43, 54), QColor(203, 75, 22), QColor(88, 110, 117),
-             QColor(101, 123, 131), QColor(131, 148, 150), QColor(108, 113, 196),
-             QColor(147, 161, 161), QColor(253, 246, 227)}};
-}
-
-TerminalTheme TerminalTheme::retroGreen() {
-    return {"Retro Green",
-            QColor(0, 255, 0),
-            QColor(0, 0, 0),
-            {QColor(0, 0, 0), QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0),
-             QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0), QColor(0, 170, 0),
-             QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85),
-             QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85), QColor(85, 255, 85)}};
-}
-
 TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
+
     TerminalTheme theme;
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -447,8 +422,8 @@ void KodoTerm::updateTerminalSize() {
         }
     }
     if (m_pty) {
-        m_pty->resize(
-            QSize(cols, rows)); // Check if PtyProcess expects cols/rows or width/height pixels?
+        // Check if PtyProcess expects cols/rows or width/height pixels?
+        m_pty->resize(QSize(cols, rows));
         // My interface says "resize(const QSize &size)".
         // PtyProcessUnix::resize uses it as height=rows, width=cols.
         // Let's stick to that convention: width=cols, height=rows.
@@ -780,31 +755,22 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
 
     menu->addSeparator();
-
     menu->addAction(tr("Select All"), this, &KodoTerm::selectAll);
-
     menu->addSeparator();
-
     menu->addAction(tr("Clear Scrollback"), this, &KodoTerm::clearScrollback);
     menu->addAction(tr("Reset"), this, &KodoTerm::resetTerminal);
-
     menu->addSeparator();
-
     menu->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn);
     menu->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut);
     menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
-
     menu->addSeparator();
     auto *themesMenu = menu->addMenu(tr("Themes"));
     auto *konsoleMenu = themesMenu->addMenu(tr("Konsole"));
     auto *wtMenu = themesMenu->addMenu(tr("Windows Terminal"));
-
     populateThemeMenu(konsoleMenu, ":/themes/konsole", TerminalTheme::ThemeFormat::Konsole);
     populateThemeMenu(wtMenu, ":/themes/windowsterminal",
                       TerminalTheme::ThemeFormat::WindowsTerminal);
-
     emit contextMenuRequested(menu, event->globalPos());
-
     menu->exec(event->globalPos());
     delete menu;
 }

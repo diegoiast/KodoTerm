@@ -22,20 +22,27 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat { Konsole, WindowsTerminal };
+    enum class ThemeFormat {
+
+        Konsole,
+
+        WindowsTerminal
+
+    };
 
     struct ThemeInfo {
+
         QString name;
+
         QString path;
+
         ThemeFormat format;
     };
 
-    static TerminalTheme breezeDark();
-    static TerminalTheme solarizedDark();
-    static TerminalTheme retroGreen();
-
     static TerminalTheme loadKonsoleTheme(const QString &path);
+
     static TerminalTheme loadWindowsTerminalTheme(const QString &path);
+
     static QList<ThemeInfo> builtInThemes();
 };
 
