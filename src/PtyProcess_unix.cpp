@@ -5,7 +5,11 @@
 
 #include <QDebug>
 #include <QCoreApplication>
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#include <util.h>
+#else
 #include <pty.h>
+#endif
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
