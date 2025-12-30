@@ -1,4 +1,4 @@
-# CodoTerm
+# KodoTerm
 
 A modern C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 
@@ -7,12 +7,12 @@ A modern C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 - **Qt6 Integration**: Seamlessly integrates as a `QWidget`.
 - **LibVTerm**: Uses the robust `libvterm` for VT100/xterm emulation.
 - **PTY Support**: Handles pseudo-terminal interactions via `forkpty`.
-- **Customizable**: Supports custom fonts and colors (basic mapping).
+- **Themes**: supports themes from Konsole and WindowsTerminal. 
 
 ## Prerequisites
 
-- C++17 compiler
-- CMake 3.16+
+- C++20 compiler
+- CMake 3.24+
 - Qt6 (Core, Gui, Widgets)
 - Linux (for `forkpty` support)
 
@@ -28,7 +28,7 @@ make
 ## Run Demo
 
 ```bash
-./build/CodoTermDemo
+./build/KodoTermDemo
 ```
 
 ## License

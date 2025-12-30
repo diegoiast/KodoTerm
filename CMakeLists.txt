@@ -1,14 +1,13 @@
 # SPDX-License-Identifier: MIT
 # Author: Diego Iastrubni <diegoiast@gmail.com>
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 
 project(codoterm LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 option(BUILD_EXAMPLES "Build the examples" ON)
@@ -44,7 +43,6 @@ set(KODOTERM_SOURCES
     include/KodoTerm/KodoTerm.hpp
     src/PtyProcess.cpp
     src/PtyProcess.h
-    themes.qrc
 )
 
 if(UNIX)
@@ -79,7 +77,7 @@ if(BUILD_EXAMPLES)
     #    target_link_libraries(codoterm PRIVATE ${UTIL_LIB})
     #endif()
     
-    add_executable(KodoTermDemo WIN32
+    add_executable(KodoTermDemo
       examples/main.cpp
     )
     target_link_libraries(KodoTermDemo PRIVATE
