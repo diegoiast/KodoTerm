@@ -35,16 +35,13 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
 KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     m_font = QFont("Monospace", 10);
     m_font.setStyleHint(QFont::Monospace);
-
     QFontMetrics fm(m_font);
     m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
-
     if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
         m_cellSize = QSize(10, 20);
     }
 
     setFocusPolicy(Qt::StrongFocus);
-
     m_scrollBar = new QScrollBar(Qt::Vertical, this);
     m_scrollBar->setRange(0, 0);
     connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
@@ -187,7 +184,6 @@ int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
 
     m_scrollback.pop_back();
     m_scrollBar->setRange(0, (int)m_scrollback.size());
-
     return 1;
 }
 
@@ -198,16 +194,13 @@ void KodoTerm::updateTerminalSize() {
 
     int rows = height() / m_cellSize.height();
     int cols = (width() - m_scrollBar->sizeHint().width()) / m_cellSize.width();
-
     if (rows <= 0) {
         rows = 1;
     }
     if (cols <= 0) {
         cols = 1;
     }
-
     m_scrollBar->setPageStep(rows);
-
     if (m_vterm) {
         vterm_set_size(m_vterm, rows, cols);
         if (m_vtermScreen) {
@@ -262,259 +255,127 @@ void KodoTerm::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
 }
 
-void KodoTerm::wheelEvent(QWheelEvent *event) {
-
-    m_scrollBar->event(event);
-
-}
-
-
+void KodoTerm::wheelEvent(QWheelEvent *event) { m_scrollBar->event(event); }
 
 void KodoTerm::mousePressEvent(QMouseEvent *event) {
-
     if (event->button() == Qt::LeftButton) {
-
         m_selecting = true;
-
         m_selectionStart = mouseToPos(event->pos());
-
         m_selectionEnd = m_selectionStart;
-
         update();
-
     }
-
 }
-
-
 
 void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
-
     if (m_selecting) {
-
         m_selectionEnd = mouseToPos(event->pos());
-
         update();
-
     }
-
 }
-
-
 
 void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
-
     if (event->button() == Qt::LeftButton && m_selecting) {
-
         m_selecting = false;
-
         m_selectionEnd = mouseToPos(event->pos());
-
-        if (m_selectionStart.row == m_selectionEnd.row && m_selectionStart.col == m_selectionEnd.col) {
-
+        if (m_selectionStart.row == m_selectionEnd.row &&
+            m_selectionStart.col == m_selectionEnd.col) {
             m_selectionStart = {-1, -1};
-
             m_selectionEnd = {-1, -1};
-
+        } else if (m_copyOnSelect) {
+            copyToClipboard();
         }
-
         update();
-
     }
-
 }
-
-
 
 VTermPos KodoTerm::mouseToPos(const QPoint &pos) const {
-
     int row = pos.y() / m_cellSize.height();
-
     int col = pos.x() / m_cellSize.width();
-
-
-
     int scrollbackLines = (int)m_scrollback.size();
-
     int currentScrollPos = m_scrollBar->value();
 
-
-
     VTermPos vpos;
-
     vpos.row = currentScrollPos + row;
-
     vpos.col = col;
-
     return vpos;
-
 }
-
-
 
 bool KodoTerm::isSelected(int row, int col) const {
-
     if (m_selectionStart.row == -1) {
-
         return false;
-
     }
-
-
 
     VTermPos start = m_selectionStart;
-
     VTermPos end = m_selectionEnd;
-
-
-
     if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
-
         std::swap(start, end);
-
     }
-
-
 
     if (row < start.row || row > end.row) {
-
         return false;
-
     }
-
-
-
     if (row == start.row && row == end.row) {
-
         return col >= start.col && col <= end.col;
-
     }
-
-
-
     if (row == start.row) {
-
         return col >= start.col;
-
     }
-
-
-
     if (row == end.row) {
-
         return col <= end.col;
-
     }
-
-
-
     return true;
-
 }
-
-
 
 QString KodoTerm::getTextRange(VTermPos start, VTermPos end) {
-
     if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
-
         std::swap(start, end);
-
     }
-
-
 
     QString text;
-
     int scrollbackLines = (int)m_scrollback.size();
-
-
-
     int rows, cols;
-
     vterm_get_size(m_vterm, &rows, &cols);
 
-
-
     for (int r = start.row; r <= end.row; ++r) {
-
         int startCol = (r == start.row) ? start.col : 0;
-
-        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large number
-
-
+        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large numbe
 
         if (r < scrollbackLines) {
-
             const SavedLine &line = m_scrollback[r];
-
             for (int c = startCol; c <= endCol && c < (int)line.size(); ++c) {
-
                 for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && line[c].chars[i]; ++i) {
-
                     text.append(QChar::fromUcs4(line[c].chars[i]));
-
                 }
-
             }
-
         } else {
-
             int vtermRow = r - scrollbackLines;
-
             if (vtermRow < rows) {
-
                 for (int c = startCol; c <= endCol && c < cols; ++c) {
-
                     VTermScreenCell cell;
-
                     vterm_screen_get_cell(m_vtermScreen, {vtermRow, c}, &cell);
-
                     for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; ++i) {
-
                         text.append(QChar::fromUcs4(cell.chars[i]));
-
                     }
-
                 }
-
             }
-
         }
-
         if (r < end.row) {
-
             text.append('\n');
-
         }
-
     }
-
     return text;
-
 }
-
-
 
 void KodoTerm::copyToClipboard() {
-
     if (m_selectionStart.row == -1) {
-
         return;
-
     }
-
     QString text = getTextRange(m_selectionStart, m_selectionEnd);
-
     QApplication::clipboard()->setText(text);
-
 }
 
-
-
-void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected) {
-
-
+void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell,
+                        bool selected) {
     auto mapColor = [](const VTermColor &c, const VTermState *state) -> QColor {
         if (VTERM_COLOR_IS_RGB(&c)) {
             return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);
@@ -533,20 +394,16 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
     if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
         fg = mapColor(cell.fg, state);
     }
-
     if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
         bg = mapColor(cell.bg, state);
     }
-
     if (cell.attrs.reverse ^ selected) {
         std::swap(fg, bg);
     }
 
     QRect rect(col * m_cellSize.width(), row * m_cellSize.height(), m_cellSize.width(),
                m_cellSize.height());
-
     painter.fillRect(rect, bg);
-
     if (cell.chars[0] != 0) {
         painter.setPen(fg);
         QString s;
@@ -564,10 +421,8 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
 
     int rows, cols;
     vterm_get_size(m_vterm, &rows, &cols);
-
     int scrollbackLines = (int)m_scrollback.size();
     int currentScrollPos = m_scrollBar->value();
-
     for (int row = 0; row < rows; ++row) {
         int absoluteRow = currentScrollPos + row;
         if (absoluteRow < scrollbackLines) {
@@ -659,7 +514,8 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
             }
             break;
         default:
-            if ((event->modifiers() & Qt::ControlModifier) && (event->modifiers() & Qt::ShiftModifier)) {
+            if ((event->modifiers() & Qt::ControlModifier) &&
+                (event->modifiers() & Qt::ShiftModifier)) {
                 if (key == Qt::Key_C) {
                     copyToClipboard();
                     return;

@@ -39,6 +39,12 @@ class KodoTerm : public QWidget {
     void pageDown();
     void copyToClipboard();
 
+    bool copyOnSelect() const { return m_copyOnSelect; }
+    void setCopyOnSelect(bool enable) { m_copyOnSelect = enable; }
+
+    bool pasteOnMiddleClick() const { return m_pasteOnMiddleClick; }
+    void setPasteOnMiddleClick(bool enable) { m_pasteOnMiddleClick = enable; }
+
   private:
     void setupPty();
     void updateTerminalSize();
@@ -82,4 +88,10 @@ class KodoTerm : public QWidget {
     bool m_selecting = false;
     VTermPos m_selectionStart = {-1, -1};
     VTermPos m_selectionEnd = {-1, -1};
+#ifdef Q_OS_WIN
+    bool m_copyOnSelect = false;
+#else
+    bool m_copyOnSelect = true;
+#endif
+    bool m_pasteOnMiddleClick = true;
 };
