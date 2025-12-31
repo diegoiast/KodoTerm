@@ -27,8 +27,11 @@ PtyProcessUnix::~PtyProcessUnix() {
     }
 }
 
-bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
-                           const QSize &size) {
+bool PtyProcessUnix::start(const QSize &size) {
+    if (m_program.isEmpty()) {
+        return false;
+    }
+
     struct winsize ws;
     ws.ws_row = (unsigned short)size.height();
     ws.ws_col = (unsigned short)size.width();
@@ -44,30 +47,36 @@ bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
 
     if (pid == 0) {
         // Child
-        setenv("TERM", "xterm-256color", 1);
+        // Working directory
+        if (!m_workingDirectory.isEmpty()) {
+            if (chdir(m_workingDirectory.toLocal8Bit().constData()) != 0) {
+                _exit(1);
+            }
+        }
 
-        // Prepare args
-        // If program is /bin/bash, args might be empty
-        // execl expects path, arg0, ..., nullptr
-        // For simplicity, we just exec bash like before if program is bash
-        // But let's support generic execvp
+        // Environment
+        for (const auto &key : m_environment.keys()) {
+            setenv(key.toLocal8Bit().constData(),
+                   m_environment.value(key).toLocal8Bit().constData(), 1);
+        }
+        setenv("TERM", "xterm-256color", 1);
 
         // Convert args to char* array
         std::vector<char *> args;
-        QByteArray progBytes = program.toLocal8Bit();
+        QByteArray progBytes = m_program.toLocal8Bit();
         args.push_back(progBytes.data());
 
         // Helper to keep storage alive
         std::vector<QByteArray> storage;
-        storage.reserve(arguments.size());
+        storage.reserve(m_arguments.size());
 
-        for (const auto &arg : arguments) {
+        for (const auto &arg : m_arguments) {
             storage.push_back(arg.toLocal8Bit());
             args.push_back(storage.back().data());
         }
         args.push_back(nullptr);
 
-        execvp(program.toLocal8Bit().constData(), args.data());
+        execvp(m_program.toLocal8Bit().constData(), args.data());
 
         // If execvp returns, it failed
         _exit(1);
@@ -80,6 +89,11 @@ bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
 
         return true;
     }
+}
+
+bool PtyProcessUnix::start(const QString &program, const QStringList &arguments,
+                           const QSize &size) {
+    return PtyProcess::start(program, arguments, size);
 }
 
 void PtyProcessUnix::write(const QByteArray &data) {

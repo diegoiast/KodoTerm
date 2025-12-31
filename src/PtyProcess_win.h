@@ -14,6 +14,7 @@ class PtyProcessWin : public PtyProcess {
     explicit PtyProcessWin(QObject *parent = nullptr);
     ~PtyProcessWin() override;
 
+    bool start(const QSize &size) override;
     bool start(const QString &program, const QStringList &arguments, const QSize &size) override;
     void write(const QByteArray &data) override;
     void resize(const QSize &size) override;

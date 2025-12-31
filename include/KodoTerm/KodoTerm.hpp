@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QFont>
 #include <QMenu>
+#include <QProcessEnvironment>
 #include <QScrollBar>
 #include <QSocketNotifier>
 #include <QTimer>
@@ -22,7 +23,10 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat { Konsole, WindowsTerminal };
+    enum class ThemeFormat {
+        Konsole,
+        WindowsTerminal
+    };
 
     struct ThemeInfo {
         QString name;
@@ -45,7 +49,22 @@ class KodoTerm : public QWidget {
 
     void setTheme(const TerminalTheme &theme);
 
+    void setProgram(const QString &program) { m_program = program; }
+    QString program() const { return m_program; }
+    void setArguments(const QStringList &arguments) { m_arguments = arguments; }
+    QStringList arguments() const { return m_arguments; }
+    void setWorkingDirectory(const QString &workingDirectory) {
+        m_workingDirectory = workingDirectory;
+    }
+    QString workingDirectory() const { return m_workingDirectory; }
+    void setProcessEnvironment(const QProcessEnvironment &environment) {
+        m_environment = environment;
+    }
+    QProcessEnvironment processEnvironment() const { return m_environment; }
+    bool start();
+
   protected:
+
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -73,6 +92,7 @@ class KodoTerm : public QWidget {
     void clearScrollback();
     void resetTerminal();
     void openFileBrowser();
+    void kill();
 
     void zoomIn();
     void zoomOut();
@@ -160,4 +180,9 @@ class KodoTerm : public QWidget {
     bool m_visualBellActive = false;
     QString m_cwd;
     QByteArray m_oscBuffer;
+
+    QString m_program;
+    QStringList m_arguments;
+    QString m_workingDirectory;
+    QProcessEnvironment m_environment = QProcessEnvironment::systemEnvironment();
 };

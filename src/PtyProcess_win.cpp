@@ -56,29 +56,31 @@ PtyProcessWin::~PtyProcessWin() {
     kill(); // kill() now closes everything properly
 }
 
-bool PtyProcessWin::start(const QString &program, const QStringList &arguments, const QSize &size) {
+bool PtyProcessWin::start(const QSize &size) {
+    if (m_program.isEmpty()) {
+        return false;
+    }
+
     HANDLE hPipePTYIn = INVALID_HANDLE_VALUE;
     HANDLE hPipePTYOut = INVALID_HANDLE_VALUE;
 
-    if (!CreatePipe(&hPipePTYIn, &m_hPipeOut, NULL, 64*1024)) {
+    // Create pipes
+    if (!CreatePipe(&hPipePTYIn, &m_hPipeOut, NULL, 0)) {
         return false;
     }
-    if (!CreatePipe(&m_hPipeIn, &hPipePTYOut, NULL, 64*1024)) {
-        CloseHandle(m_hPipeOut);
-        CloseHandle(hPipePTYIn);
+    if (!CreatePipe(&m_hPipeIn, &hPipePTYOut, NULL, 0)) {
         return false;
     }
 
+    // Create Pseudo Console
     COORD origin = {(SHORT)size.width(), (SHORT)size.height()};
     HRESULT hr = CreatePseudoConsole(origin, hPipePTYIn, hPipePTYOut, 0, &m_hPC);
 
+    // Close the sides we don't need
     CloseHandle(hPipePTYIn);
     CloseHandle(hPipePTYOut);
 
     if (FAILED(hr)) {
-        CloseHandle(m_hPipeIn);
-        CloseHandle(m_hPipeOut);
-        m_hPipeIn = m_hPipeOut = INVALID_HANDLE_VALUE;
         return false;
     }
 
@@ -94,26 +96,52 @@ bool PtyProcessWin::start(const QString &program, const QStringList &arguments, 
         return false;
     }
 
-    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &bytesRequired) ||
-        !UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-                                   m_hPC, sizeof(HPCON), NULL, NULL)) {
-        DeleteProcThreadAttributeList(si.lpAttributeList);
-        HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
+    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &bytesRequired)) {
         return false;
     }
 
-    QString cmd = program;
-    for (const auto &arg : arguments) {
+    if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+                                   m_hPC, sizeof(HPCON), NULL, NULL)) {
+        return false;
+    }
+
+    // Command Line
+    QString cmd = m_program;
+    for (const auto &arg : m_arguments) {
         cmd += " " + arg; // Simple quoting might be needed
     }
 
+    // Working directory
+    wchar_t *pWorkingDirectory = nullptr;
+    std::vector<wchar_t> workingDir;
+    if (!m_workingDirectory.isEmpty()) {
+        workingDir.resize(m_workingDirectory.length() + 1);
+        m_workingDirectory.toWCharArray(workingDir.data());
+        workingDir[m_workingDirectory.length()] = 0;
+        pWorkingDirectory = workingDir.data();
+    }
+
+    // Environment
+    std::vector<wchar_t> envBlock;
+    for (const auto &key : m_environment.keys()) {
+        QString entry = key + "=" + m_environment.value(key);
+        for (QChar c : entry) {
+            envBlock.push_back(c.unicode());
+        }
+        envBlock.push_back(0);
+    }
+    envBlock.push_back(0);
+
+    // Create Process
     std::vector<wchar_t> cmdLine(cmd.length() + 1);
     cmd.toWCharArray(cmdLine.data());
     cmdLine[cmd.length()] = 0;
 
     BOOL success = CreateProcessW(NULL, cmdLine.data(), NULL, NULL, FALSE,
-                                  EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &si.StartupInfo, &m_pi);
+                                  EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
+                                  envBlock.data(), pWorkingDirectory, &si.StartupInfo, &m_pi);
 
+    // Cleanup attribute list
     DeleteProcThreadAttributeList(si.lpAttributeList);
     HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
 
@@ -127,6 +155,11 @@ bool PtyProcessWin::start(const QString &program, const QStringList &arguments, 
 
     return true;
 }
+
+bool PtyProcessWin::start(const QString &program, const QStringList &arguments, const QSize &size) {
+    return PtyProcess::start(program, arguments, size);
+}
+
 
 void PtyProcessWin::write(const QByteArray &data) {
     if (m_hPipeOut != INVALID_HANDLE_VALUE) {

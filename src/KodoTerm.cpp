@@ -259,7 +259,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 
     setFocusPolicy(Qt::StrongFocus);
     QTimer::singleShot(0, this, [this]() {
-        setupPty();
+        start();
     });
 }
 
@@ -272,7 +272,46 @@ KodoTerm::~KodoTerm() {
     }
 }
 
+bool KodoTerm::start() {
+    if (m_pty) {
+        m_pty->kill();
+        delete m_pty;
+        m_pty = nullptr;
+    }
+
+    resetTerminal();
+    setupPty();
+
+    if (m_program.isEmpty()) {
+        return false;
+    }
+
+    m_pty->setProgram(m_program);
+    m_pty->setArguments(m_arguments);
+    m_pty->setWorkingDirectory(m_workingDirectory);
+    m_pty->setProcessEnvironment(m_environment);
+
+    // Initial size
+    QSize size(80, 25);
+    if (!m_cellSize.isEmpty()) {
+        int rows = height() / m_cellSize.height();
+        int sbWidth = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0;
+        int cols = (width() - sbWidth) / m_cellSize.width();
+
+        size = QSize(cols, rows);
+        if (size.width() <= 0)
+            size.setWidth(80);
+        if (size.height() <= 0)
+            size.setHeight(25);
+    }
+
+    return m_pty->start(size);
+}
+
 void KodoTerm::setupPty() {
+    if (m_pty)
+        return;
+
     m_pty = PtyProcess::create(this);
     if (!m_pty) {
         qWarning() << "Failed to create PtyProcess backend";
@@ -280,31 +319,6 @@ void KodoTerm::setupPty() {
     }
     connect(m_pty, &PtyProcess::readyRead, this, &KodoTerm::onPtyReadyRead);
     vterm_output_set_callback(m_vterm, vterm_output_callback, m_pty);
-
-    QString program;
-    QStringList args;
-#ifdef Q_OS_WIN
-    program = "powershell.exe"; // or cmd.exe
-    //program = "cmd.exe"; // or cmd.exe
-    //program = "C:/Program Files/Git/bin/bash.exe"; 
-    //args << "-i" << "-l";
-#else
-    program = "/bin/bash";
-#endif
-
-    // Initial size
-    QSize size(80, 25);
-    if (!m_cellSize.isEmpty()) {
-        size = QSize(width() / m_cellSize.width(), height() / m_cellSize.height());
-        if (size.width() <= 0) {
-            size.setWidth(80);
-        }
-        if (size.height() <= 0) {
-            size.setHeight(25);
-        }
-    }
-
-    m_pty->start(program, args, size);
 }
 
 void KodoTerm::onPtyReadyRead(const QByteArray &data) {
@@ -831,6 +845,12 @@ void KodoTerm::openFileBrowser() {
         if (dir.exists()) {
             QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
         }
+    }
+}
+
+void KodoTerm::kill() {
+    if (m_pty) {
+        m_pty->kill();
     }
 }
 

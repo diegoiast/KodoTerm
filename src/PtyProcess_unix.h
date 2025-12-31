@@ -11,9 +11,10 @@ class PtyProcessUnix : public PtyProcess {
     Q_OBJECT
 
   public:
-    explicit PtyProcessUnix(QObject *parent = nullptr);
-    ~PtyProcessUnix() override;
+    PtyProcessUnix(QObject *parent = nullptr);
+    ~PtyProcessUnix();
 
+    bool start(const QSize &size) override;
     bool start(const QString &program, const QStringList &arguments, const QSize &size) override;
     void write(const QByteArray &data) override;
     void resize(const QSize &size) override;

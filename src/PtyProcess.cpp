@@ -10,6 +10,12 @@
 #include "PtyProcess_win.h"
 #endif
 
+bool PtyProcess::start(const QString &program, const QStringList &arguments, const QSize &size) {
+    setProgram(program);
+    setArguments(arguments);
+    return start(size);
+}
+
 PtyProcess *PtyProcess::create(QObject *parent) {
 #if defined(Q_OS_UNIX)
     return new PtyProcessUnix(parent);
