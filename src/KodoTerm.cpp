@@ -258,7 +258,9 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
 
     setFocusPolicy(Qt::StrongFocus);
-    setupPty();
+    QTimer::singleShot(0, this, [this]() {
+        setupPty();
+    });
 }
 
 KodoTerm::~KodoTerm() {
@@ -280,9 +282,12 @@ void KodoTerm::setupPty() {
     vterm_output_set_callback(m_vterm, vterm_output_callback, m_pty);
 
     QString program;
+    QStringList args;
 #ifdef Q_OS_WIN
-    //program = "powershell.exe"; // or cmd.exe
-    program = "cmd.exe"; // or cmd.exe
+    program = "powershell.exe"; // or cmd.exe
+    //program = "cmd.exe"; // or cmd.exe
+    //program = "C:/Program Files/Git/bin/bash.exe"; 
+    //args << "-i" << "-l";
 #else
     program = "/bin/bash";
 #endif
@@ -299,7 +304,7 @@ void KodoTerm::setupPty() {
         }
     }
 
-    m_pty->start(program, QStringList(), size);
+    m_pty->start(program, args, size);
 }
 
 void KodoTerm::onPtyReadyRead(const QByteArray &data) {
