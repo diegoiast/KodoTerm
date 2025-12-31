@@ -15,6 +15,10 @@ public slots:
     void addNewTab();
     void closeCurrentTab();
     void closeTab(QWidget *w);
+    void nextTab();
+    void previousTab();
+    void moveTabLeft();
+    void moveTabRight();
 
 private:
     QTabWidget *m_tabs;

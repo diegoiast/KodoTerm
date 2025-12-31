@@ -3,6 +3,8 @@
 
 #include "TabbedTerminal.h"
 #include <QToolButton>
+#include <QShortcut>
+#include <QTabBar>
 #include <KodoTerm/KodoTerm.hpp>
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
@@ -25,6 +27,13 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     closeTabBtn->setToolTip(tr("Close Current Tab"));
     m_tabs->setCornerWidget(closeTabBtn, Qt::TopRightCorner);
     connect(closeTabBtn, &QToolButton::clicked, this, &TabbedTerminal::closeCurrentTab);
+
+    // Shortcuts
+    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N), this, SLOT(addNewTab()));
+    new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Left), this, SLOT(previousTab()));
+    new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Right), this, SLOT(nextTab()));
+    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Left), this, SLOT(moveTabLeft()));
+    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Right), this, SLOT(moveTabRight()));
 
     addNewTab();
     resize(1024, 768);
@@ -75,5 +84,33 @@ void TabbedTerminal::closeTab(QWidget *w) {
     }
     if (m_tabs->count() == 0) {
         close();
+    }
+}
+
+void TabbedTerminal::nextTab() {
+    int count = m_tabs->count();
+    if (count <= 1) return;
+    int index = m_tabs->currentIndex();
+    m_tabs->setCurrentIndex((index + 1) % count);
+}
+
+void TabbedTerminal::previousTab() {
+    int count = m_tabs->count();
+    if (count <= 1) return;
+    int index = m_tabs->currentIndex();
+    m_tabs->setCurrentIndex((index - 1 + count) % count);
+}
+
+void TabbedTerminal::moveTabLeft() {
+    int index = m_tabs->currentIndex();
+    if (index > 0) {
+        m_tabs->tabBar()->moveTab(index, index - 1);
+    }
+}
+
+void TabbedTerminal::moveTabRight() {
+    int index = m_tabs->currentIndex();
+    if (index != -1 && index < m_tabs->count() - 1) {
+        m_tabs->tabBar()->moveTab(index, index + 1);
     }
 }
