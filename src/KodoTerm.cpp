@@ -318,6 +318,7 @@ void KodoTerm::setupPty() {
         return;
     }
     connect(m_pty, &PtyProcess::readyRead, this, &KodoTerm::onPtyReadyRead);
+    connect(m_pty, &PtyProcess::finished, this, &KodoTerm::finished);
     vterm_output_set_callback(m_vterm, vterm_output_callback, m_pty);
 }
 

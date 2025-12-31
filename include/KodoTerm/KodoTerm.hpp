@@ -78,6 +78,7 @@ class KodoTerm : public QWidget {
   signals:
     void contextMenuRequested(QMenu *menu, const QPoint &pos);
     void cwdChanged(const QString &cwd);
+    void finished(int exitCode, int exitStatus);
 
   public slots:
     void onPtyReadyRead(const QByteArray &data);
