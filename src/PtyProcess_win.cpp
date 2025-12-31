@@ -217,4 +217,9 @@ void PtyProcessWin::kill() {
     }
 }
 
+bool PtyProcessWin::isRoot() const {
+    // Could check for elevation here
+    return false;
+}
+
 void PtyProcessWin::onReadThreadData(const QByteArray &data) { emit readyRead(data); }

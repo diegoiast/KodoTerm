@@ -928,6 +928,8 @@ void KodoTerm::resetZoom() {
     update();
 }
 
+bool KodoTerm::isRoot() const { return m_pty && m_pty->isRoot(); }
+
 QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *state) const {
     if (VTERM_COLOR_IS_RGB(&c)) {
         return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);

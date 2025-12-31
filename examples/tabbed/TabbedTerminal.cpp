@@ -35,6 +35,11 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Left), this, SLOT(moveTabLeft()));
     new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Right), this, SLOT(moveTabRight()));
 
+    QTimer *colorTimer = new QTimer(this);
+    colorTimer->setInterval(1000);
+    connect(colorTimer, &QTimer::timeout, this, &TabbedTerminal::updateTabColors);
+    colorTimer->start();
+
     addNewTab();
     resize(1024, 768);
 }
@@ -53,8 +58,11 @@ void TabbedTerminal::addNewTab() {
         int index = m_tabs->indexOf(console);
         if (index != -1) {
             m_tabs->setTabText(index, title);
+            updateTabColors();
         }
     });
+
+    connect(console, &KodoTerm::cwdChanged, this, &TabbedTerminal::updateTabColors);
 
     connect(console, &KodoTerm::finished, this, [this, console]() {
         closeTab(console);
@@ -112,5 +120,31 @@ void TabbedTerminal::moveTabRight() {
     int index = m_tabs->currentIndex();
     if (index != -1 && index < m_tabs->count() - 1) {
         m_tabs->tabBar()->moveTab(index, index + 1);
+    }
+}
+
+void TabbedTerminal::updateTabColors() {
+    QTabBar *bar = m_tabs->tabBar();
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        KodoTerm *console = qobject_cast<KodoTerm *>(m_tabs->widget(i));
+        if (!console)
+            continue;
+
+        QString title = console->windowTitle();
+        if (title.isEmpty())
+            title = tr("Terminal");
+
+        if (console->isRoot()) {
+            bar->setTabTextColor(i, Qt::red);
+            if (!title.startsWith("root@")) {
+                title = "root@" + title;
+            }
+        } else {
+            bar->setTabTextColor(i, QPalette().color(QPalette::WindowText));
+            if (title.startsWith("root@")) {
+                title = title.mid(5);
+            }
+        }
+        m_tabs->setTabText(i, title);
     }
 }

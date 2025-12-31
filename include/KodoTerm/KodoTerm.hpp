@@ -99,6 +99,7 @@ class KodoTerm : public QWidget {
     void zoomOut();
     void resetZoom();
 
+    bool isRoot() const;
     const QString &cwd() const { return m_cwd; }
 
     bool copyOnSelect() const { return m_copyOnSelect; }

@@ -19,6 +19,7 @@ class PtyProcessUnix : public PtyProcess {
     void write(const QByteArray &data) override;
     void resize(const QSize &size) override;
     void kill() override;
+    bool isRoot() const override;
 
   private slots:
     void onReadyRead();

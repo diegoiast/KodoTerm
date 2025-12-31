@@ -36,6 +36,7 @@ class PtyProcess : public QObject {
     virtual void write(const QByteArray &data) = 0;
     virtual void resize(const QSize &size) = 0;
     virtual void kill() = 0;
+    virtual bool isRoot() const = 0;
 
     // Factory method
     static PtyProcess *create(QObject *parent = nullptr);

@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -119,6 +120,27 @@ void PtyProcessUnix::kill() {
         // Wait? usually waitpid via signal handler, but for now just cleanup
         m_pid = -1;
     }
+}
+
+bool PtyProcessUnix::isRoot() const {
+    if (m_masterFd < 0)
+        return false;
+
+    pid_t pgrp = tcgetpgrp(m_masterFd);
+    if (pgrp <= 0) {
+        // Fallback to initial pid
+        if (m_pid <= 0)
+            return false;
+        pgrp = m_pid;
+    }
+
+    struct stat st;
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d", (int)pgrp);
+    if (stat(path, &st) == 0) {
+        return st.st_uid == 0;
+    }
+    return false;
 }
 
 void PtyProcessUnix::onReadyRead() {
