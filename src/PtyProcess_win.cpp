@@ -16,13 +16,20 @@ class PtyProcessWin::ReaderThread : public QThread {
         char buffer[4096];
         DWORD bytesRead;
         while (m_running) {
-            if (ReadFile(m_hPipe, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0) {
-                // Determine if we need to emit via meta-object system
-                // Since we are in a thread, we should invoke method on parent
-                QByteArray data(buffer, (int)bytesRead);
-                QMetaObject::invokeMethod(m_parent, "onReadThreadData", Qt::QueuedConnection,
-                                          Q_ARG(QByteArray, data));
+            if (ReadFile(m_hPipe, buffer, sizeof(buffer), &bytesRead, NULL)) {
+                if (bytesRead > 0) {
+                    QByteArray data(buffer, (int)bytesRead);
+                    QMetaObject::invokeMethod(m_parent, "onReadThreadData", Qt::QueuedConnection,
+                                              Q_ARG(QByteArray, data));
+                } else {
+                    // EOF (bytesRead == 0)
+                    break;
+                }
             } else {
+                DWORD err = GetLastError();
+                if (err == ERROR_BROKEN_PIPE || err == ERROR_HANDLE_EOF) {
+                    break;
+                }
                 break;
             }
         }
@@ -30,7 +37,6 @@ class PtyProcessWin::ReaderThread : public QThread {
 
     void stop() {
         m_running = false;
-        // CancelSynchronousIo(threadHandle) or CloseHandle(m_hPipe) externally triggers exit
     }
 
   private:
@@ -41,43 +47,38 @@ class PtyProcessWin::ReaderThread : public QThread {
 
 PtyProcessWin::PtyProcessWin(QObject *parent) : PtyProcess(parent) {
     ZeroMemory(&m_pi, sizeof(PROCESS_INFORMATION));
+    m_hPC = INVALID_HANDLE_VALUE;
+    m_hPipeIn = INVALID_HANDLE_VALUE;
+    m_hPipeOut = INVALID_HANDLE_VALUE;
 }
 
 PtyProcessWin::~PtyProcessWin() {
-    if (m_hPC != INVALID_HANDLE_VALUE) {
-        ClosePseudoConsole(m_hPC);
-        m_hPC = INVALID_HANDLE_VALUE;
-    }
-    kill();
-    if (m_hPipeIn != INVALID_HANDLE_VALUE) {
-        CloseHandle(m_hPipeIn);
-    }
-    if (m_hPipeOut != INVALID_HANDLE_VALUE) {
-        CloseHandle(m_hPipeOut);
-    }
+    kill(); // kill() now closes everything properly
 }
 
 bool PtyProcessWin::start(const QString &program, const QStringList &arguments, const QSize &size) {
     HANDLE hPipePTYIn = INVALID_HANDLE_VALUE;
     HANDLE hPipePTYOut = INVALID_HANDLE_VALUE;
 
-    // Create pipes
     if (!CreatePipe(&hPipePTYIn, &m_hPipeOut, NULL, 0)) {
         return false;
     }
     if (!CreatePipe(&m_hPipeIn, &hPipePTYOut, NULL, 0)) {
+        CloseHandle(m_hPipeOut);
+        CloseHandle(hPipePTYIn);
         return false;
     }
 
-    // Create Pseudo Console
     COORD origin = {(SHORT)size.width(), (SHORT)size.height()};
     HRESULT hr = CreatePseudoConsole(origin, hPipePTYIn, hPipePTYOut, 0, &m_hPC);
 
-    // Close the sides we don't need
     CloseHandle(hPipePTYIn);
     CloseHandle(hPipePTYOut);
 
     if (FAILED(hr)) {
+        CloseHandle(m_hPipeIn);
+        CloseHandle(m_hPipeOut);
+        m_hPipeIn = m_hPipeOut = INVALID_HANDLE_VALUE;
         return false;
     }
 
@@ -93,22 +94,19 @@ bool PtyProcessWin::start(const QString &program, const QStringList &arguments, 
         return false;
     }
 
-    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &bytesRequired)) {
-        return false;
-    }
-
-    if (!UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &bytesRequired) ||
+        !UpdateProcThreadAttribute(si.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
                                    m_hPC, sizeof(HPCON), NULL, NULL)) {
+        DeleteProcThreadAttributeList(si.lpAttributeList);
+        HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
         return false;
     }
 
-    // Command Line
     QString cmd = program;
     for (const auto &arg : arguments) {
         cmd += " " + arg; // Simple quoting might be needed
     }
 
-    // Create Process
     std::vector<wchar_t> cmdLine(cmd.length() + 1);
     cmd.toWCharArray(cmdLine.data());
     cmdLine[cmd.length()] = 0;
@@ -116,7 +114,6 @@ bool PtyProcessWin::start(const QString &program, const QStringList &arguments, 
     BOOL success = CreateProcessW(NULL, cmdLine.data(), NULL, NULL, FALSE,
                                   EXTENDED_STARTUPINFO_PRESENT, NULL, NULL, &si.StartupInfo, &m_pi);
 
-    // Cleanup attribute list
     DeleteProcThreadAttributeList(si.lpAttributeList);
     HeapFree(GetProcessHeap(), 0, si.lpAttributeList);
 
@@ -146,21 +143,44 @@ void PtyProcessWin::resize(const QSize &size) {
 }
 
 void PtyProcessWin::kill() {
+    // First, close the pseudo console — this is the key fix
+    // It immediately unblocks any pending ReadFile on the pipes
+    if (m_hPC != INVALID_HANDLE_VALUE) {
+        ClosePseudoConsole(m_hPC);
+        m_hPC = INVALID_HANDLE_VALUE;
+    }
+
+    // Stop and clean up reader thread
     if (m_readerThread) {
         m_readerThread->stop();
-        // Closing handle usually terminates blocking read
-        CloseHandle(m_hPipeIn);
-        m_hPipeIn = INVALID_HANDLE_VALUE;
-        m_readerThread->wait();
+        // Close our read handle as a safety net (though ClosePseudoConsole already unblocked)
+        if (m_hPipeIn != INVALID_HANDLE_VALUE) {
+            CloseHandle(m_hPipeIn);
+            m_hPipeIn = INVALID_HANDLE_VALUE;
+        }
+        m_readerThread->wait(3000); // give it a reasonable timeout
+        if (m_readerThread->isRunning()) {
+            m_readerThread->terminate(); // last resort
+            m_readerThread->wait();
+        }
         delete m_readerThread;
         m_readerThread = nullptr;
     }
 
+    // Close write pipe
+    if (m_hPipeOut != INVALID_HANDLE_VALUE) {
+        CloseHandle(m_hPipeOut);
+        m_hPipeOut = INVALID_HANDLE_VALUE;
+    }
+
+    // Terminate child process if still running
     if (m_pi.hProcess) {
         TerminateProcess(m_pi.hProcess, 1);
+        WaitForSingleObject(m_pi.hProcess, 5000);
         CloseHandle(m_pi.hProcess);
         CloseHandle(m_pi.hThread);
         m_pi.hProcess = NULL;
+        m_pi.hThread = NULL;
     }
 }
 

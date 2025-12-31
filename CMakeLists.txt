@@ -79,7 +79,7 @@ if(BUILD_EXAMPLES)
     #    target_link_libraries(codoterm PRIVATE ${UTIL_LIB})
     #endif()
     
-    add_executable(KodoTermDemo
+    add_executable(KodoTermDemo WIN32
       examples/main.cpp
     )
     target_link_libraries(KodoTermDemo PRIVATE
