@@ -69,6 +69,9 @@ void TabbedTerminal::closeTab(QWidget *w) {
     if (index != -1) {
         m_tabs->removeTab(index);
         w->deleteLater();
+        if (m_tabs->currentWidget()) {
+            m_tabs->currentWidget()->setFocus();
+        }
     }
     if (m_tabs->count() == 0) {
         close();
