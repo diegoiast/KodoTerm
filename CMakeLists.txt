@@ -75,14 +75,22 @@ target_link_libraries(KodoTerm PUBLIC
 )
 
 if(BUILD_EXAMPLES)
-    #if(UNIX AND UTIL_LIB)
-    #    target_link_libraries(codoterm PRIVATE ${UTIL_LIB})
-    #endif()
-    
-    add_executable(KodoTermDemo WIN32
-      examples/main.cpp
+    add_executable(KodoTermSimple WIN32
+      examples/simple/main.cpp
     )
-    target_link_libraries(KodoTermDemo PRIVATE
+    target_link_libraries(KodoTermSimple PRIVATE
+      Qt6::Core
+      Qt6::Gui
+      Qt6::Widgets
+      KodoTerm::KodoTerm
+    )
+
+    add_executable(KodoTermTabbed WIN32
+      examples/tabbed/main.cpp
+      examples/tabbed/TabbedTerminal.cpp
+      examples/tabbed/TabbedTerminal.h
+    )
+    target_link_libraries(KodoTermTabbed PRIVATE
       Qt6::Core
       Qt6::Gui
       Qt6::Widgets
