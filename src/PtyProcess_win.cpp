@@ -60,10 +60,10 @@ bool PtyProcessWin::start(const QString &program, const QStringList &arguments, 
     HANDLE hPipePTYIn = INVALID_HANDLE_VALUE;
     HANDLE hPipePTYOut = INVALID_HANDLE_VALUE;
 
-    if (!CreatePipe(&hPipePTYIn, &m_hPipeOut, NULL, 0)) {
+    if (!CreatePipe(&hPipePTYIn, &m_hPipeOut, NULL, 64*1024)) {
         return false;
     }
-    if (!CreatePipe(&m_hPipeIn, &hPipePTYOut, NULL, 0)) {
+    if (!CreatePipe(&m_hPipeIn, &hPipePTYOut, NULL, 64*1024)) {
         CloseHandle(m_hPipeOut);
         CloseHandle(hPipePTYIn);
         return false;

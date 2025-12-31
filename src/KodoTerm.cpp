@@ -281,7 +281,8 @@ void KodoTerm::setupPty() {
 
     QString program;
 #ifdef Q_OS_WIN
-    program = "powershell.exe"; // or cmd.exe
+    //program = "powershell.exe"; // or cmd.exe
+    program = "cmd.exe"; // or cmd.exe
 #else
     program = "/bin/bash";
 #endif
