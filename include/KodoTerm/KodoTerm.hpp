@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QColor>
+#include <QFile>
 #include <QFont>
 #include <QMenu>
 #include <QProcessEnvironment>
@@ -42,7 +43,7 @@ class KodoTerm : public QWidget {
         m_environment = environment;
     }
     QProcessEnvironment processEnvironment() const { return m_environment; }
-    bool start();
+    bool start(bool reset = true);
 
   protected:
     void paintEvent(QPaintEvent *event) override;
@@ -74,6 +75,10 @@ class KodoTerm : public QWidget {
     void resetTerminal();
     void openFileBrowser();
     void kill();
+
+    void logData(const QByteArray &data);
+    QString logPath() const { return m_logFile.fileName(); }
+    void scrollToBottom();
 
     void zoomIn();
     void zoomOut();
@@ -158,4 +163,5 @@ class KodoTerm : public QWidget {
     QString m_workingDirectory;
     QProcessEnvironment m_environment = QProcessEnvironment::systemEnvironment();
     KodoTermConfig m_config;
+    QFile m_logFile;
 };

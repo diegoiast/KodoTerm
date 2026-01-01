@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QMap>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QTextStream>
 
 TerminalTheme TerminalTheme::defaultTheme() {
@@ -233,15 +234,13 @@ KodoTermConfig::KodoTermConfig() { setDefaults(); }
 void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
     font.setStyleHint(QFont::Monospace);
-#ifdef Q_OS_WIN
-    copyOnSelect = false;
-#else
     copyOnSelect = true;
-#endif
     pasteOnMiddleClick = true;
     mouseWheelZoom = true;
     visualBell = true;
     audibleBell = true;
+    enableLogging = true;
+    logDirectory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     maxScrollback = 1000;
     theme = TerminalTheme::defaultTheme();
 }
@@ -267,6 +266,12 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
     if (json.contains("audibleBell")) {
         audibleBell = json["audibleBell"].toBool();
     }
+    if (json.contains("enableLogging")) {
+        enableLogging = json["enableLogging"].toBool();
+    }
+    if (json.contains("logDirectory")) {
+        logDirectory = json["logDirectory"].toString();
+    }
     if (json.contains("maxScrollback")) {
         maxScrollback = json["maxScrollback"].toInt();
     }
@@ -287,6 +292,8 @@ QJsonObject KodoTermConfig::saveToJson() const {
     obj["mouseWheelZoom"] = mouseWheelZoom;
     obj["visualBell"] = visualBell;
     obj["audibleBell"] = audibleBell;
+    obj["enableLogging"] = enableLogging;
+    obj["logDirectory"] = logDirectory;
     obj["maxScrollback"] = maxScrollback;
     obj["theme"] = theme.toJson();
     return obj;
@@ -302,6 +309,8 @@ void KodoTermConfig::load(QSettings &settings) {
     mouseWheelZoom = settings.value("mouseWheelZoom", mouseWheelZoom).toBool();
     visualBell = settings.value("visualBell", visualBell).toBool();
     audibleBell = settings.value("audibleBell", audibleBell).toBool();
+    enableLogging = settings.value("enableLogging", enableLogging).toBool();
+    logDirectory = settings.value("logDirectory", logDirectory).toString();
     maxScrollback = settings.value("maxScrollback", maxScrollback).toInt();
 
     theme.load(settings, "Theme");
@@ -315,6 +324,8 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("mouseWheelZoom", mouseWheelZoom);
     settings.setValue("visualBell", visualBell);
     settings.setValue("audibleBell", audibleBell);
+    settings.setValue("enableLogging", enableLogging);
+    settings.setValue("logDirectory", logDirectory);
     settings.setValue("maxScrollback", maxScrollback);
 
     theme.save(settings, "Theme");

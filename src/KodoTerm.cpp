@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QBuffer>
 #include <QClipboard>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -28,6 +29,15 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
     auto *pty = static_cast<PtyProcess *>(user);
     if (pty) {
         pty->write(QByteArray(s, (int)len));
+
+        // Parent of pty is KodoTerm
+        auto *terminal = qobject_cast<KodoTerm *>(pty->parent());
+        if (terminal && terminal->getConfig().enableLogging) {
+            // Accessing private m_logFile from static function requires a hack or better design.
+            // But since I'm already in src/KodoTerm.cpp, I can use a friend or just call a public
+            // method. Let's add a public method to KodoTerm to log input.
+            terminal->logData(QByteArray(s, (int)len));
+        }
     }
 }
 
@@ -130,7 +140,6 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
 
     setFocusPolicy(Qt::StrongFocus);
-    QTimer::singleShot(0, this, [this]() { start(); });
 }
 
 KodoTerm::~KodoTerm() {
@@ -142,14 +151,16 @@ KodoTerm::~KodoTerm() {
     }
 }
 
-bool KodoTerm::start() {
+bool KodoTerm::start(bool reset) {
     if (m_pty) {
         m_pty->kill();
         delete m_pty;
         m_pty = nullptr;
     }
 
-    resetTerminal();
+    if (reset) {
+        resetTerminal();
+    }
     setupPty();
 
     if (m_program.isEmpty()) {
@@ -160,6 +171,32 @@ bool KodoTerm::start() {
     m_pty->setArguments(m_arguments);
     m_pty->setWorkingDirectory(m_workingDirectory);
     m_pty->setProcessEnvironment(m_environment);
+
+    if (m_config.enableLogging) {
+        if (m_logFile.isOpen()) {
+            m_logFile.close();
+        }
+        QDir logDir(m_config.logDirectory);
+        if (!logDir.exists()) {
+            logDir.mkpath(".");
+        }
+        QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss_zzz");
+        QString logName = QString("kodoterm_%1.log").arg(timestamp);
+        m_logFile.setFileName(logDir.filePath(logName));
+        if (m_logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QString header = QString("--- KodoTerm Session Log ---\n"
+                                     "Program: %1\n"
+                                     "Arguments: %2\n"
+                                     "CWD: %3\n"
+                                     "Start: %4\n"
+                                     "----------------------------\n\n")
+                                 .arg(m_program)
+                                 .arg(m_arguments.join(" "))
+                                 .arg(m_workingDirectory)
+                                 .arg(timestamp);
+            m_logFile.write(header.toUtf8());
+        }
+    }
 
     // Initial size
     QSize size(80, 25);
@@ -198,6 +235,10 @@ void KodoTerm::setupPty() {
 
 void KodoTerm::onPtyReadyRead(const QByteArray &data) {
     if (!data.isEmpty()) {
+        if (m_logFile.isOpen()) {
+            m_logFile.write(data);
+            m_logFile.flush();
+        }
         vterm_input_write(m_vterm, data.constData(), data.size());
         vterm_screen_flush_damage(m_vtermScreen);
     }
@@ -719,6 +760,19 @@ void KodoTerm::openFileBrowser() {
 void KodoTerm::kill() {
     if (m_pty) {
         m_pty->kill();
+    }
+}
+
+void KodoTerm::logData(const QByteArray &data) {
+    if (m_logFile.isOpen()) {
+        m_logFile.write(data);
+        m_logFile.flush();
+    }
+}
+
+void KodoTerm::scrollToBottom() {
+    if (m_scrollBar) {
+        m_scrollBar->setValue(m_scrollBar->maximum());
     }
 }
 

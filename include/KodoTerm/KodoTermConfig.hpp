@@ -45,6 +45,8 @@ class KodoTermConfig {
     bool mouseWheelZoom;
     bool visualBell;
     bool audibleBell;
+    bool enableLogging;
+    QString logDirectory;
     int maxScrollback;
     TerminalTheme theme;
 
