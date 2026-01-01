@@ -14,7 +14,17 @@ static QSettings getSettings() {
 
 QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
     QList<ShellInfo> shells;
+
     auto add = [&](const QString &name, const QString &path) {
+        QFileInfo newFi(path);
+        if (!newFi.exists()) return;
+        
+        QString newCanonical = newFi.canonicalFilePath();
+        for (const auto &existing : shells) {
+            if (QFileInfo(existing.path).canonicalFilePath() == newCanonical) {
+                return;
+            }
+        }
         shells.append({name, path});
     };
 
@@ -49,8 +59,8 @@ QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
     }
     // Fallback if /etc/shells is empty or unreadable
     if (shells.isEmpty()) {
-        add("Bash", "/bin/bash");
-        add("Sh", "/bin/sh");
+        add("/bin/bash", "/bin/bash");
+        add("/bin/sh", "/bin/sh");
     }
 #endif
     return shells;
@@ -60,13 +70,31 @@ QList<AppConfig::ShellInfo> AppConfig::loadShells() {
     QSettings s = getSettings();
     QList<ShellInfo> shells;
     int size = s.beginReadArray("Shells");
+    
+    QSet<QString> seenCanonicalPaths;
+
     if (size > 0) {
         for (int i = 0; i < size; ++i) {
             s.setArrayIndex(i);
             ShellInfo info;
             info.name = s.value("name").toString();
             info.path = s.value("path").toString();
-            shells.append(info);
+            
+            QFileInfo fi(info.path);
+            if (fi.exists()) {
+                QString canonical = fi.canonicalFilePath();
+                if (!seenCanonicalPaths.contains(canonical)) {
+                    shells.append(info);
+                    seenCanonicalPaths.insert(canonical);
+                }
+            } else {
+                 // Keep if it doesn't exist (custom path?) or skip? 
+                 // Let's keep distinct paths.
+                 if (!seenCanonicalPaths.contains(info.path)) {
+                     shells.append(info);
+                     seenCanonicalPaths.insert(info.path);
+                 }
+            }
         }
         s.endArray();
     } else {

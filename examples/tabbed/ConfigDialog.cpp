@@ -130,7 +130,11 @@ void ConfigDialog::loadSettings() {
     m_shellList->clear();
     m_defaultShellCombo->clear();
     for (const auto &info : m_currentShells) {
-        m_shellList->addItem(info.name + " (" + info.path + ")");
+        if (info.name == info.path) {
+            m_shellList->addItem(info.name);
+        } else {
+            m_shellList->addItem(info.name + " (" + info.path + ")");
+        }
         m_defaultShellCombo->addItem(info.name);
     }
     m_defaultShellCombo->setCurrentText(AppConfig::defaultShell());
@@ -152,7 +156,11 @@ void ConfigDialog::addShell() {
     if (path.isEmpty()) return;
 
     m_currentShells.append({name, path});
-    m_shellList->addItem(name + " (" + path + ")");
+    if (name == path) {
+        m_shellList->addItem(name);
+    } else {
+        m_shellList->addItem(name + " (" + path + ")");
+    }
     m_defaultShellCombo->addItem(name);
 }
 
