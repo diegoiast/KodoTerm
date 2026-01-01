@@ -92,6 +92,8 @@ if(BUILD_EXAMPLES)
       examples/tabbed/TabbedTerminal.h
       examples/tabbed/AppConfig.cpp
       examples/tabbed/AppConfig.h
+      examples/tabbed/ConfigDialog.cpp
+      examples/tabbed/ConfigDialog.h
     )
     target_link_libraries(KodoTermTabbed PRIVATE
       Qt6::Core

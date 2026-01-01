@@ -13,6 +13,12 @@ public:
         QString path;
     };
 
-    static QStringList availableShells();
+    static QList<ShellInfo> detectedShells();
+    static QList<ShellInfo> loadShells();
+    static void saveShells(const QList<ShellInfo> &shells);
+    
+    static QString defaultShell();
+    static void setDefaultShell(const QString &name);
+    
     static ShellInfo getShellInfo(const QString &shellName);
 };

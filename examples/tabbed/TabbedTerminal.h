@@ -20,6 +20,8 @@ public slots:
     void moveTabLeft();
     void moveTabRight();
     void updateTabColors();
+    void showConfigDialog();
+    void applySettings();
 
 private:
     QTabWidget *m_tabs;

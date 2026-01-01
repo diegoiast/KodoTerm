@@ -3,10 +3,12 @@
 
 #include "TabbedTerminal.h"
 #include "AppConfig.h"
+#include "ConfigDialog.h"
 #include <QToolButton>
-#include <QShortcut>
 #include <QTabBar>
 #include <QMenu>
+#include <QAction>
+#include <QSettings>
 #include <KodoTerm/KodoTerm.hpp>
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
@@ -24,12 +26,21 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs->setCornerWidget(newTabBtn, Qt::TopLeftCorner);
     
     QMenu *shellsMenu = new QMenu(newTabBtn);
-    QStringList shells = AppConfig::availableShells();
-    for (const QString &shell : shells) {
-        shellsMenu->addAction(shell, this, [this, shell]() {
-            addNewTab(AppConfig::getShellInfo(shell).path);
-        });
-    }
+    
+    auto updateMenu = [this, shellsMenu, newTabBtn]() {
+        shellsMenu->clear();
+        QList<AppConfig::ShellInfo> shells = AppConfig::loadShells();
+        for (const auto &shell : shells) {
+            shellsMenu->addAction(shell.name, this, [this, shell]() {
+                addNewTab(shell.path);
+            });
+        }
+        shellsMenu->addSeparator();
+        shellsMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
+    };
+    updateMenu();
+    connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
+
     newTabBtn->setMenu(shellsMenu);
     connect(newTabBtn, &QToolButton::clicked, this, [this](){ addNewTab(); });
 
@@ -40,12 +51,48 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs->setCornerWidget(closeTabBtn, Qt::TopRightCorner);
     connect(closeTabBtn, &QToolButton::clicked, this, &TabbedTerminal::closeCurrentTab);
 
-    // Shortcuts
-    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N), this, [this](){ addNewTab(); });
-    new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Left), this, SLOT(previousTab()));
-    new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Right), this, SLOT(nextTab()));
-    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Left), this, SLOT(moveTabLeft()));
-    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Right), this, SLOT(moveTabRight()));
+    // Actions
+    QAction *newTabAction = new QAction(tr("New Tab"), this);
+    newTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    newTabAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(newTabAction, &QAction::triggered, this, [this](){ addNewTab(); });
+    addAction(newTabAction);
+
+    QAction *closeTabAction = new QAction(tr("Close Tab"), this);
+    closeTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
+    closeTabAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(closeTabAction, &QAction::triggered, this, &TabbedTerminal::closeCurrentTab);
+    addAction(closeTabAction);
+
+    QAction *prevTabAction = new QAction(tr("Previous Tab"), this);
+    prevTabAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Left));
+    prevTabAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(prevTabAction, &QAction::triggered, this, &TabbedTerminal::previousTab);
+    addAction(prevTabAction);
+
+    QAction *nextTabAction = new QAction(tr("Next Tab"), this);
+    nextTabAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Right));
+    nextTabAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(nextTabAction, &QAction::triggered, this, &TabbedTerminal::nextTab);
+    addAction(nextTabAction);
+
+    QAction *moveTabLeftAction = new QAction(tr("Move Tab Left"), this);
+    moveTabLeftAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Left));
+    moveTabLeftAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(moveTabLeftAction, &QAction::triggered, this, &TabbedTerminal::moveTabLeft);
+    addAction(moveTabLeftAction);
+
+    QAction *moveTabRightAction = new QAction(tr("Move Tab Right"), this);
+    moveTabRightAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Right));
+    moveTabRightAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(moveTabRightAction, &QAction::triggered, this, &TabbedTerminal::moveTabRight);
+    addAction(moveTabRightAction);
+
+    QAction *configAction = new QAction(tr("Configure..."), this);
+    configAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
+    configAction->setShortcutContext(Qt::ApplicationShortcut);
+    connect(configAction, &QAction::triggered, this, &TabbedTerminal::showConfigDialog);
+    addAction(configAction);
 
     QTimer *colorTimer = new QTimer(this);
     colorTimer->setInterval(1000);
@@ -59,16 +106,22 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
 void TabbedTerminal::addNewTab(const QString &program) {
     KodoTerm *console = new KodoTerm(m_tabs);
     
+    // Load config
+    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    KodoTermConfig config;
+    config.load(s);
+    console->setConfig(config);
+
     if (!program.isEmpty()) {
         console->setProgram(program);
     } else {
-#ifdef Q_OS_WIN
-        console->setProgram("powershell.exe");
-#else
-        console->setProgram("/bin/bash");
-#endif
+        QString defName = AppConfig::defaultShell();
+        AppConfig::ShellInfo info = AppConfig::getShellInfo(defName);
+        console->setProgram(info.path);
     }
-    console->setTheme(TerminalTheme::loadKonsoleTheme(":/KodoTermThemes/konsole/Breeze.colorscheme"));
+    
+    // Theme is applied via setConfig, but let's make sure it's set if config was empty
+    // config.load(s) might have loaded "Default" theme if settings were empty.
     
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
         int index = m_tabs->indexOf(console);
@@ -88,6 +141,26 @@ void TabbedTerminal::addNewTab(const QString &program) {
     m_tabs->setCurrentIndex(index);
     console->setFocus();
     console->start();
+}
+
+void TabbedTerminal::showConfigDialog() {
+    ConfigDialog dlg(this);
+    if (dlg.exec() == QDialog::Accepted) {
+        applySettings();
+    }
+}
+
+void TabbedTerminal::applySettings() {
+    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    KodoTermConfig config;
+    config.load(s);
+
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        KodoTerm *console = qobject_cast<KodoTerm *>(m_tabs->widget(i));
+        if (console) {
+            console->setConfig(config);
+        }
+    }
 }
 
 void TabbedTerminal::closeCurrentTab() {

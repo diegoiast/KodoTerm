@@ -1,0 +1,226 @@
+// SPDX-License-Identifier: MIT
+// Author: Diego Iastrubni <diegoiast@gmail.com>
+
+#include "ConfigDialog.h"
+
+#include <QTabWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QListWidget>
+#include <QComboBox>
+#include <QFontComboBox>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QFileDialog>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QSettings>
+
+ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
+    setWindowTitle(tr("Configuration"));
+    resize(500, 400);
+
+    QTabWidget *tabs = new QTabWidget(this);
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->addWidget(tabs);
+
+    // --- General Tab ---
+    QWidget *generalTab = new QWidget();
+    QVBoxLayout *generalLayout = new QVBoxLayout(generalTab);
+
+    QLabel *shellsLabel = new QLabel(tr("Available Shells:"), generalTab);
+    m_shellList = new QListWidget(generalTab);
+    
+    QHBoxLayout *shellBtnLayout = new QHBoxLayout();
+    QPushButton *addBtn = new QPushButton(tr("Add..."), generalTab);
+    QPushButton *removeBtn = new QPushButton(tr("Remove"), generalTab);
+    shellBtnLayout->addStretch();
+    shellBtnLayout->addWidget(addBtn);
+    shellBtnLayout->addWidget(removeBtn);
+
+    QHBoxLayout *defaultShellLayout = new QHBoxLayout();
+    QLabel *defaultLabel = new QLabel(tr("Default Shell:"), generalTab);
+    m_defaultShellCombo = new QComboBox(generalTab);
+    defaultShellLayout->addWidget(defaultLabel);
+    defaultShellLayout->addWidget(m_defaultShellCombo);
+    defaultShellLayout->addStretch();
+
+    generalLayout->addWidget(shellsLabel);
+    generalLayout->addWidget(m_shellList);
+    generalLayout->addLayout(shellBtnLayout);
+    generalLayout->addLayout(defaultShellLayout);
+    
+    tabs->addTab(generalTab, tr("General"));
+
+    // --- Terminal Tab ---
+    QWidget *terminalTab = new QWidget();
+    QVBoxLayout *termLayout = new QVBoxLayout(terminalTab);
+
+    QHBoxLayout *fontLayout = new QHBoxLayout();
+    m_fontCombo = new QFontComboBox(terminalTab);
+    m_fontCombo->setEditable(false); // Only allow selecting existing fonts
+    // Filter for monospaced fonts? KodoTerm usually works best with them.
+    m_fontCombo->setFontFilters(QFontComboBox::MonospacedFonts); 
+    
+    m_fontSizeSpin = new QSpinBox(terminalTab);
+    m_fontSizeSpin->setRange(6, 72);
+    fontLayout->addWidget(new QLabel(tr("Font:")));
+    fontLayout->addWidget(m_fontCombo, 1);
+    fontLayout->addWidget(m_fontSizeSpin);
+
+    QHBoxLayout *themeLayout = new QHBoxLayout();
+    m_themeCombo = new QComboBox(terminalTab);
+    // Populate themes
+    auto themes = TerminalTheme::builtInThemes();
+    for (const auto &info : themes) {
+        m_themeCombo->addItem(info.name, info.path);
+    }
+    themeLayout->addWidget(new QLabel(tr("Theme:")));
+    themeLayout->addWidget(m_themeCombo, 1);
+
+    m_copyOnSelect = new QCheckBox(tr("Copy on select"), terminalTab);
+    m_pasteOnMiddleClick = new QCheckBox(tr("Paste on middle click"), terminalTab);
+    m_mouseWheelZoom = new QCheckBox(tr("Mouse wheel zoom"), terminalTab);
+    m_visualBell = new QCheckBox(tr("Visual Bell"), terminalTab);
+    m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
+    
+    QHBoxLayout *sbLayout = new QHBoxLayout();
+    m_maxScrollback = new QSpinBox(terminalTab);
+    m_maxScrollback->setRange(0, 100000);
+    m_maxScrollback->setSingleStep(100);
+    sbLayout->addWidget(new QLabel(tr("Max Scrollback Lines:")));
+    sbLayout->addWidget(m_maxScrollback);
+    sbLayout->addStretch();
+
+    termLayout->addLayout(fontLayout);
+    termLayout->addLayout(themeLayout);
+    termLayout->addWidget(m_copyOnSelect);
+    termLayout->addWidget(m_pasteOnMiddleClick);
+    termLayout->addWidget(m_mouseWheelZoom);
+    termLayout->addWidget(m_visualBell);
+    termLayout->addWidget(m_audibleBell);
+    termLayout->addLayout(sbLayout);
+    termLayout->addStretch();
+
+    tabs->addTab(terminalTab, tr("Terminal"));
+
+    // --- Dialog Buttons ---
+    QHBoxLayout *btnLayout = new QHBoxLayout();
+    QPushButton *okBtn = new QPushButton(tr("OK"), this);
+    QPushButton *cancelBtn = new QPushButton(tr("Cancel"), this);
+    btnLayout->addStretch();
+    btnLayout->addWidget(okBtn);
+    btnLayout->addWidget(cancelBtn);
+    mainLayout->addLayout(btnLayout);
+
+    // Connections
+    connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addShell);
+    connect(removeBtn, &QPushButton::clicked, this, &ConfigDialog::removeShell);
+    connect(okBtn, &QPushButton::clicked, this, &ConfigDialog::save);
+    connect(cancelBtn, &QPushButton::clicked, this, &ConfigDialog::reject);
+
+    loadSettings();
+}
+
+void ConfigDialog::loadSettings() {
+    // General
+    m_currentShells = AppConfig::loadShells();
+    m_shellList->clear();
+    m_defaultShellCombo->clear();
+    for (const auto &info : m_currentShells) {
+        m_shellList->addItem(info.name + " (" + info.path + ")");
+        m_defaultShellCombo->addItem(info.name);
+    }
+    m_defaultShellCombo->setCurrentText(AppConfig::defaultShell());
+
+    // Terminal
+    // We assume setTerminalConfig is called by caller to populate, OR we load from QSettings directly here?
+    // The requirement says "save the settings in a QSettings". So we can load from there too.
+    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    KodoTermConfig config;
+    config.load(s); // Uses "Theme" group by default for theme
+    setTerminalConfig(config);
+}
+
+void ConfigDialog::addShell() {
+    QString name = QInputDialog::getText(this, tr("Add Shell"), tr("Shell Name:"));
+    if (name.isEmpty()) return;
+
+    QString path = QFileDialog::getOpenFileName(this, tr("Select Shell Executable"));
+    if (path.isEmpty()) return;
+
+    m_currentShells.append({name, path});
+    m_shellList->addItem(name + " (" + path + ")");
+    m_defaultShellCombo->addItem(name);
+}
+
+void ConfigDialog::removeShell() {
+    int row = m_shellList->currentRow();
+    if (row >= 0 && row < m_currentShells.size()) {
+        QString nameToRemove = m_currentShells[row].name;
+        m_currentShells.removeAt(row);
+        delete m_shellList->takeItem(row);
+        int comboIdx = m_defaultShellCombo->findText(nameToRemove);
+        if (comboIdx != -1) {
+            m_defaultShellCombo->removeItem(comboIdx);
+        }
+    }
+}
+
+void ConfigDialog::save() {
+    // Save Shells
+    AppConfig::saveShells(m_currentShells);
+    AppConfig::setDefaultShell(m_defaultShellCombo->currentText());
+
+    // Save Terminal Config
+    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    KodoTermConfig config = getTerminalConfig();
+    config.save(s);
+
+    accept();
+}
+
+KodoTermConfig ConfigDialog::getTerminalConfig() const {
+    KodoTermConfig config;
+    config.font = m_fontCombo->currentFont();
+    config.font.setPointSize(m_fontSizeSpin->value());
+    
+    // Find theme by name match or path?
+    // m_themeCombo stores path in userData
+    QString themePath = m_themeCombo->currentData().toString();
+    // We need to load the actual theme object
+    if (themePath.endsWith(".colorscheme")) {
+        config.theme = TerminalTheme::loadKonsoleTheme(themePath);
+    } else {
+        config.theme = TerminalTheme::loadWindowsTerminalTheme(themePath);
+    }
+
+    config.copyOnSelect = m_copyOnSelect->isChecked();
+    config.pasteOnMiddleClick = m_pasteOnMiddleClick->isChecked();
+    config.mouseWheelZoom = m_mouseWheelZoom->isChecked();
+    config.visualBell = m_visualBell->isChecked();
+    config.audibleBell = m_audibleBell->isChecked();
+    config.maxScrollback = m_maxScrollback->value();
+    
+    return config;
+}
+
+void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
+    m_fontCombo->setCurrentFont(config.font);
+    m_fontSizeSpin->setValue(config.font.pointSize());
+    
+    // Select theme in combo
+    int idx = m_themeCombo->findText(config.theme.name);
+    if (idx != -1) {
+        m_themeCombo->setCurrentIndex(idx);
+    }
+
+    m_copyOnSelect->setChecked(config.copyOnSelect);
+    m_pasteOnMiddleClick->setChecked(config.pasteOnMiddleClick);
+    m_mouseWheelZoom->setChecked(config.mouseWheelZoom);
+    m_visualBell->setChecked(config.visualBell);
+    m_audibleBell->setChecked(config.audibleBell);
+    m_maxScrollback->setValue(config.maxScrollback);
+}
