@@ -12,22 +12,24 @@ class TabbedTerminal : public QMainWindow {
     TabbedTerminal(QWidget *parent = nullptr);
 
   public slots:
-      void addNewTab(const QString &program = QString(), const QString &workingDirectory = QString());
-      void closeCurrentTab();
-      void closeTab(QWidget *w);
-      void nextTab();
-      void previousTab();
-      void moveTabLeft();
-      void moveTabRight();
-          void updateTabColors();
-          void showConfigDialog();
-          void applySettings();
-          void saveSession();
-      
-      protected:
-          void closeEvent(QCloseEvent *event) override;
-      
-      private:
-          QTabWidget *m_tabs;
-          QTimer *m_autoSaveTimer;
-      };
+    void addNewTab(const QString &program = QString(), const QString &workingDirectory = QString());
+    void closeCurrentTab();
+    void closeTab(QWidget *w);
+    void nextTab();
+    void previousTab();
+    void moveTabLeft();
+    void moveTabRight();
+    void updateTabColors();
+    void showConfigDialog();
+    void applySettings();
+    void saveSession();
+    void toggleExpanded();
+
+  protected:
+    void closeEvent(QCloseEvent *event) override;
+
+  private:
+    QTabWidget *m_tabs;
+    QTimer *m_autoSaveTimer;
+    bool m_useFullScreenMode = false;
+};

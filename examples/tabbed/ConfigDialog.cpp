@@ -85,6 +85,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     m_mouseWheelZoom = new QCheckBox(tr("Mouse wheel zoom"), terminalTab);
     m_visualBell = new QCheckBox(tr("Visual Bell"), terminalTab);
     m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
+    m_fullScreen = new QCheckBox(tr("Use Borderless Full Screen mode"), terminalTab);
 
     QHBoxLayout *sbLayout = new QHBoxLayout();
     m_maxScrollback = new QSpinBox(terminalTab);
@@ -101,6 +102,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     termLayout->addWidget(m_mouseWheelZoom);
     termLayout->addWidget(m_visualBell);
     termLayout->addWidget(m_audibleBell);
+    termLayout->addWidget(m_fullScreen);
     termLayout->addLayout(sbLayout);
     termLayout->addStretch();
 
@@ -140,13 +142,11 @@ void ConfigDialog::loadSettings() {
     m_defaultShellCombo->setCurrentText(AppConfig::defaultShell());
 
     // Terminal
-    // We assume setTerminalConfig is called by caller to populate, OR we load from QSettings
-    // directly here? The requirement says "save the settings in a QSettings". So we can load from
-    // there too.
     QSettings s;
+    m_fullScreen->setChecked(s.value("Window/UseFullScreenMode", false).toBool());
+
     KodoTermConfig config;
-    config.load(s); // Uses "Theme" group by default for theme
-    setTerminalConfig(config);
+    config.load(s);
 }
 
 void ConfigDialog::addShell() {
@@ -189,6 +189,8 @@ void ConfigDialog::save() {
 
     // Save Terminal Config
     QSettings s;
+    s.setValue("Window/UseFullScreenMode", m_fullScreen->isChecked());
+
     KodoTermConfig config = getTerminalConfig();
     config.save(s);
 

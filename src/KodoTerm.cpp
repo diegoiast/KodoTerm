@@ -244,7 +244,7 @@ int KodoTerm::onOsc(int command, VTermStringFragment frag, void *user) {
                 if (path.isEmpty() || (path.startsWith("//") && !qurl.host().isEmpty())) {
                     path = qurl.path();
                 }
-                
+
                 if (!path.isEmpty() && widget->m_cwd != path) {
                     widget->m_cwd = path;
                     emit widget->cwdChanged(path);
