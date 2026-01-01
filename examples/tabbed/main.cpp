@@ -7,6 +7,8 @@
 int main(int argc, char *argv[]) {
     Q_INIT_RESOURCE(KodoTermThemes);
     QApplication app(argc, argv);
+    app.setOrganizationName("Diego Iastrubni");
+    app.setApplicationName("KodoTermTabbed");
     TabbedTerminal mainWindow;
     mainWindow.setWindowTitle("KodoTerm Tabbed Demo");
     mainWindow.show();

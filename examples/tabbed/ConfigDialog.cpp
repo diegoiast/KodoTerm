@@ -143,7 +143,7 @@ void ConfigDialog::loadSettings() {
     // We assume setTerminalConfig is called by caller to populate, OR we load from QSettings
     // directly here? The requirement says "save the settings in a QSettings". So we can load from
     // there too.
-    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    QSettings s;
     KodoTermConfig config;
     config.load(s); // Uses "Theme" group by default for theme
     setTerminalConfig(config);
@@ -188,7 +188,7 @@ void ConfigDialog::save() {
     AppConfig::setDefaultShell(m_defaultShellCombo->currentText());
 
     // Save Terminal Config
-    QSettings s("Diego Iastrubni", "KodoTermTabbed");
+    QSettings s;
     KodoTermConfig config = getTerminalConfig();
     config.save(s);
 

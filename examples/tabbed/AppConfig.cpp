@@ -8,8 +8,6 @@
 #include <QStandardPaths>
 #include <QTextStream>
 
-static QSettings getSettings() { return QSettings("Diego Iastrubni", "KodoTermTabbed"); }
-
 QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
     QList<ShellInfo> shells;
 
@@ -67,7 +65,7 @@ QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
 }
 
 QList<AppConfig::ShellInfo> AppConfig::loadShells() {
-    QSettings s = getSettings();
+    QSettings s;
     QList<ShellInfo> shells;
     int size = s.beginReadArray("Shells");
 
@@ -106,7 +104,7 @@ QList<AppConfig::ShellInfo> AppConfig::loadShells() {
 }
 
 void AppConfig::saveShells(const QList<ShellInfo> &shells) {
-    QSettings s = getSettings();
+    QSettings s;
     s.beginWriteArray("Shells");
     for (int i = 0; i < shells.size(); ++i) {
         s.setArrayIndex(i);
@@ -117,7 +115,7 @@ void AppConfig::saveShells(const QList<ShellInfo> &shells) {
 }
 
 QString AppConfig::defaultShell() {
-    QSettings s = getSettings();
+    QSettings s;
     QString def = s.value("DefaultShell").toString();
     if (def.isEmpty()) {
         QList<ShellInfo> shells = loadShells();
@@ -129,7 +127,7 @@ QString AppConfig::defaultShell() {
 }
 
 void AppConfig::setDefaultShell(const QString &name) {
-    QSettings s = getSettings();
+    QSettings s;
     s.setValue("DefaultShell", name);
 }
 

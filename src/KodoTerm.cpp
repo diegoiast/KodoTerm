@@ -108,6 +108,13 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this);
     vterm_screen_reset(m_vtermScreen, 1);
 
+    if (!m_environment.contains("TERM")) {
+        m_environment.insert("TERM", "xterm-256color");
+    }
+    if (!m_environment.contains("COLORTERM")) {
+        m_environment.insert("COLORTERM", "truecolor");
+    }
+
     setTheme(m_config.theme);
 
     VTermState *state = vterm_obtain_state(m_vterm);
@@ -170,7 +177,8 @@ bool KodoTerm::start() {
         }
     }
 
-    return m_pty->start(size);
+    bool success = m_pty->start(size);
+    return success;
 }
 
 void KodoTerm::setupPty() {
@@ -233,13 +241,10 @@ int KodoTerm::onOsc(int command, VTermStringFragment frag, void *user) {
             if (urlStr.startsWith("file://")) {
                 QUrl qurl(urlStr);
                 QString path = qurl.toLocalFile();
-                if (path.isEmpty()) {
+                if (path.isEmpty() || (path.startsWith("//") && !qurl.host().isEmpty())) {
                     path = qurl.path();
                 }
-                // Handle potential trailing characters from malformed sequences
-                if (path.endsWith(';') || path.endsWith('.')) {
-                    path.chop(1);
-                }
+                
                 if (!path.isEmpty() && widget->m_cwd != path) {
                     widget->m_cwd = path;
                     emit widget->cwdChanged(path);
@@ -636,7 +641,7 @@ QString KodoTerm::getTextRange(VTermPos start, VTermPos end) {
 
     for (int r = start.row; r <= end.row; ++r) {
         int startCol = (r == start.row) ? start.col : 0;
-        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large numbe
+        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large number
 
         if (r < scrollbackLines) {
             const SavedLine &line = m_scrollback[r];
