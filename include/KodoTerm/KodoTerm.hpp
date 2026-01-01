@@ -15,30 +15,9 @@
 #include <vector>
 #include <vterm.h>
 
+#include "KodoTermConfig.hpp"
+
 class PtyProcess;
-
-struct TerminalTheme {
-    QString name;
-    QColor foreground;
-    QColor background;
-    QColor palette[16];
-
-    enum class ThemeFormat {
-        Konsole,
-        WindowsTerminal
-    };
-
-    struct ThemeInfo {
-        QString name;
-        QString path;
-        ThemeFormat format;
-    };
-
-    static TerminalTheme defaultTheme();
-    static TerminalTheme loadKonsoleTheme(const QString &path);
-    static TerminalTheme loadWindowsTerminalTheme(const QString &path);
-    static QList<ThemeInfo> builtInThemes();
-};
 
 class KodoTerm : public QWidget {
     Q_OBJECT
@@ -48,6 +27,8 @@ class KodoTerm : public QWidget {
     ~KodoTerm();
 
     void setTheme(const TerminalTheme &theme);
+    void setConfig(const KodoTermConfig &config);
+    KodoTermConfig getConfig() const { return m_config; }
 
     void setProgram(const QString &program) { m_program = program; }
     QString program() const { return m_program; }
@@ -102,17 +83,17 @@ class KodoTerm : public QWidget {
     bool isRoot() const;
     const QString &cwd() const { return m_cwd; }
 
-    bool copyOnSelect() const { return m_copyOnSelect; }
-    void setCopyOnSelect(bool enable) { m_copyOnSelect = enable; }
+    bool copyOnSelect() const { return m_config.copyOnSelect; }
+    void setCopyOnSelect(bool enable) { m_config.copyOnSelect = enable; }
 
-    bool pasteOnMiddleClick() const { return m_pasteOnMiddleClick; }
-    void setPasteOnMiddleClick(bool enable) { m_pasteOnMiddleClick = enable; }
-    bool mouseWheelZoom() const { return m_mouseWheelZoom; }
-    void setMouseWheelZoom(bool enable) { m_mouseWheelZoom = enable; }
-    bool visualBell() const { return m_visualBell; }
-    void setVisualBell(bool enable) { m_visualBell = enable; }
-    bool audibleBell() const { return m_audibleBell; }
-    void setAudibleBell(bool enable) { m_audibleBell = enable; }
+    bool pasteOnMiddleClick() const { return m_config.pasteOnMiddleClick; }
+    void setPasteOnMiddleClick(bool enable) { m_config.pasteOnMiddleClick = enable; }
+    bool mouseWheelZoom() const { return m_config.mouseWheelZoom; }
+    void setMouseWheelZoom(bool enable) { m_config.mouseWheelZoom = enable; }
+    bool visualBell() const { return m_config.visualBell; }
+    void setVisualBell(bool enable) { m_config.visualBell = enable; }
+    bool audibleBell() const { return m_config.audibleBell; }
+    void setAudibleBell(bool enable) { m_config.audibleBell = enable; }
 
   private:
     void setupPty();
@@ -150,7 +131,6 @@ class KodoTerm : public QWidget {
     VTermScreen *m_vtermScreen = nullptr;
 
     QSocketNotifier *m_notifier = nullptr;
-    QFont m_font;
     QSize m_cellSize;
     int m_cursorRow = 0;
     int m_cursorCol = 0;
@@ -165,20 +145,11 @@ class KodoTerm : public QWidget {
 
     QScrollBar *m_scrollBar = nullptr;
     std::deque<SavedLine> m_scrollback;
-    int m_maxScrollback = 1000;
 
     bool m_selecting = false;
     VTermPos m_selectionStart = {-1, -1};
     VTermPos m_selectionEnd = {-1, -1};
-#ifdef Q_OS_WIN
-    bool m_copyOnSelect = false;
-#else
-    bool m_copyOnSelect = true;
-#endif
-    bool m_pasteOnMiddleClick = true;
-    bool m_mouseWheelZoom = true;
-    bool m_visualBell = true;
-    bool m_audibleBell = true;
+
     bool m_visualBellActive = false;
     QString m_cwd;
     QByteArray m_oscBuffer;
@@ -187,4 +158,5 @@ class KodoTerm : public QWidget {
     QStringList m_arguments;
     QString m_workingDirectory;
     QProcessEnvironment m_environment = QProcessEnvironment::systemEnvironment();
+    KodoTermConfig m_config;
 };

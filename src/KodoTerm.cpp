@@ -11,10 +11,8 @@
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QDir>
-#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QKeyEvent>
@@ -42,144 +40,15 @@ static VTermColor toVTermColor(const QColor &c) {
     return vc;
 }
 
-TerminalTheme TerminalTheme::defaultTheme() {
-    return {"Default",
-            QColor(170, 170, 170),
-            QColor(0, 0, 0),
-            {QColor(0, 0, 0), QColor(170, 0, 0), QColor(0, 170, 0), QColor(170, 85, 0),
-             QColor(0, 0, 170), QColor(170, 0, 170), QColor(0, 170, 170), QColor(170, 170, 170),
-             QColor(85, 85, 85), QColor(255, 85, 85), QColor(85, 255, 85), QColor(255, 255, 85),
-             QColor(85, 85, 255), QColor(255, 85, 255), QColor(85, 255, 255),
-             QColor(255, 255, 255)}};
-}
-
-TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
-    TerminalTheme theme = defaultTheme();
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return theme;
-    }
-
-    theme.name = QFileInfo(path).baseName();
-    auto parseColor = [](const QString &s) -> QColor {
-        QStringList parts = s.split(',');
-        if (parts.size() >= 3) {
-            return QColor(parts[0].toInt(), parts[1].toInt(), parts[2].toInt());
-        }
-        return QColor();
-    };
-
-    QMap<QString, QMap<QString, QString>> sections;
-    QString currentSection;
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
-        if (line.isEmpty() || line.startsWith(';')) {
-            continue;
-        }
-        if (line.startsWith('[') && line.endsWith(']')) {
-            currentSection = line.mid(1, line.length() - 2);
-        } else if (!currentSection.isEmpty()) {
-            int eq = line.indexOf('=');
-            if (eq != -1) {
-                QString key = line.left(eq).trimmed();
-                QString value = line.mid(eq + 1).trimmed();
-                sections[currentSection][key] = value;
-            }
-        }
-    }
-
-    if (sections.contains("General") && sections["General"].contains("Description")) {
-        theme.name = sections["General"]["Description"];
-    }
-
-    QColor fg = parseColor(sections["Foreground"]["Color"]);
-    if (fg.isValid()) {
-        theme.foreground = fg;
-    }
-
-    QColor bg = parseColor(sections["Background"]["Color"]);
-    if (bg.isValid()) {
-        theme.background = bg;
-    }
-
-    for (int i = 0; i < 16; ++i) {
-        QString section = QString("Color%1%2").arg(i % 8).arg(i >= 8 ? "Intense" : "");
-        QColor c = parseColor(sections[section]["Color"]);
-        if (c.isValid()) {
-            theme.palette[i] = c;
-        }
-    }
-
-    return theme;
-}
-
-TerminalTheme TerminalTheme::loadWindowsTerminalTheme(const QString &path) {
-    TerminalTheme theme = defaultTheme();
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return theme;
-    }
-
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    QJsonObject obj = doc.object();
-    if (obj.contains("name")) {
-        theme.name = obj.value("name").toString();
-    }
-    if (obj.contains("foreground")) {
-        theme.foreground = QColor(obj.value("foreground").toString());
-    }
-    if (obj.contains("background")) {
-        theme.background = QColor(obj.value("background").toString());
-    }
-    QStringList keys = {"black",       "red",          "green",       "yellow",
-                        "blue",        "purple",       "cyan",        "white",
-                        "brightBlack", "brightRed",    "brightGreen", "brightYellow",
-                        "brightBlue",  "brightPurple", "brightCyan",  "brightWhite"};
-    for (int i = 0; i < 16; ++i) {
-        if (obj.contains(keys[i])) {
-            QColor c(obj.value(keys[i]).toString());
-            if (c.isValid()) {
-                theme.palette[i] = c;
-            }
-        }
-    }
-    return theme;
-}
-
-QList<TerminalTheme::ThemeInfo> TerminalTheme::builtInThemes() {
-    Q_INIT_RESOURCE(KodoTermThemes);
-    QList<ThemeInfo> themes;
-    QDirIterator it(":/KodoTermThemes", QStringList() << "*.colorscheme" << "*.json", QDir::Files,
-                    QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        ThemeInfo info;
-        info.path = it.filePath();
-        if (info.path.endsWith(".colorscheme")) {
-            info.format = ThemeFormat::Konsole;
-            QSettings settings(info.path, QSettings::IniFormat);
-            info.name = settings.value("General/Description", it.fileName()).toString();
-        } else {
-            info.format = ThemeFormat::WindowsTerminal;
-            QFile file(info.path);
-            if (file.open(QIODevice::ReadOnly)) {
-                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-                info.name = doc.object().value("name").toString();
-            }
-            if (info.name.isEmpty()) {
-                info.name = it.fileName();
-            }
-        }
-        themes.append(info);
-    }
-    std::sort(themes.begin(), themes.end(), [](const ThemeInfo &a, const ThemeInfo &b) {
-        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
-    });
-    return themes;
+void KodoTerm::setConfig(const KodoTermConfig &config) {
+    m_config = config;
+    setTheme(m_config.theme); // Applies colors
+    updateTerminalSize(); // Updates font/cell size
+    update();
 }
 
 void KodoTerm::setTheme(const TerminalTheme &theme) {
+    m_config.theme = theme;
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor fg = toVTermColor(theme.foreground);
     VTermColor bg = toVTermColor(theme.background);
@@ -193,18 +62,14 @@ void KodoTerm::setTheme(const TerminalTheme &theme) {
 }
 
 KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
-    m_font = QFont("Monospace", 10);
-    m_font.setStyleHint(QFont::Monospace);
-    QFontMetrics fm(m_font);
-    m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
-    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
-        m_cellSize = QSize(10, 20);
-    }
+    m_config.font.setStyleHint(QFont::Monospace);
 
     setFocusPolicy(Qt::StrongFocus);
     m_scrollBar = new QScrollBar(Qt::Vertical, this);
     m_scrollBar->setRange(0, 0);
     connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
+
+    updateTerminalSize(); // Calculates m_cellSize
 
     m_cursorBlinkTimer = new QTimer(this);
     m_cursorBlinkTimer->setInterval(500);
@@ -243,7 +108,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this);
     vterm_screen_reset(m_vtermScreen, 1);
 
-    setTheme(TerminalTheme::defaultTheme());
+    setTheme(m_config.theme);
 
     VTermState *state = vterm_obtain_state(m_vterm);
     static VTermStateFallbacks fallbacks = {
@@ -407,7 +272,7 @@ int KodoTerm::pushScrollback(int cols, const VTermScreenCell *cells) {
     }
     m_scrollback.push_back(std::move(line));
 
-    if ((int)m_scrollback.size() > m_maxScrollback) {
+    if ((int)m_scrollback.size() > m_config.maxScrollback) {
         m_scrollback.pop_front();
     }
 
@@ -441,7 +306,7 @@ int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
 }
 
 void KodoTerm::updateTerminalSize() {
-    QFontMetrics fm(m_font);
+    QFontMetrics fm(m_config.font);
     m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
     if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
         m_cellSize = QSize(10, 20);
@@ -468,11 +333,7 @@ void KodoTerm::updateTerminalSize() {
         }
     }
     if (m_pty) {
-        // Check if PtyProcess expects cols/rows or width/height pixels?
         m_pty->resize(QSize(cols, rows));
-        // My interface says "resize(const QSize &size)".
-        // PtyProcessUnix::resize uses it as height=rows, width=cols.
-        // Let's stick to that convention: width=cols, height=rows.
     }
 }
 
@@ -549,10 +410,10 @@ int KodoTerm::onSetTermProp(VTermProp prop, VTermValue *val, void *user) {
 
 int KodoTerm::onBell(void *user) {
     auto *widget = static_cast<KodoTerm *>(user);
-    if (widget->m_audibleBell) {
+    if (widget->m_config.audibleBell) {
         QApplication::beep();
     }
-    if (widget->m_visualBell) {
+    if (widget->m_config.visualBell) {
         widget->m_visualBellActive = true;
         widget->update();
         QTimer::singleShot(100, widget, [widget]() {
@@ -571,7 +432,7 @@ void KodoTerm::resizeEvent(QResizeEvent *event) {
 }
 
 void KodoTerm::wheelEvent(QWheelEvent *event) {
-    if (m_mouseWheelZoom && (event->modifiers() & Qt::ControlModifier)) {
+    if (m_config.mouseWheelZoom && (event->modifiers() & Qt::ControlModifier)) {
         if (event->angleDelta().y() > 0) {
             zoomIn();
         } else if (event->angleDelta().y() < 0) {
@@ -644,7 +505,7 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
         m_selectionStart = vpos;
         m_selectionEnd = m_selectionStart;
         update();
-    } else if (event->button() == Qt::MiddleButton && m_pasteOnMiddleClick) {
+    } else if (event->button() == Qt::MiddleButton && m_config.pasteOnMiddleClick) {
         pasteFromClipboard();
     }
 }
@@ -718,7 +579,7 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
             m_selectionStart.col == m_selectionEnd.col) {
             m_selectionStart = {-1, -1};
             m_selectionEnd = {-1, -1};
-        } else if (m_copyOnSelect) {
+        } else if (m_config.copyOnSelect) {
             copyToClipboard();
         }
         update();
@@ -901,29 +762,29 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
 }
 
 void KodoTerm::zoomIn() {
-    qreal size = m_font.pointSizeF();
+    qreal size = m_config.font.pointSizeF();
     if (size <= 0) {
-        size = m_font.pointSize();
+        size = m_config.font.pointSize();
     }
-    m_font.setPointSizeF(size + 1.0);
+    m_config.font.setPointSizeF(size + 1.0);
     updateTerminalSize();
     update();
 }
 
 void KodoTerm::zoomOut() {
-    qreal size = m_font.pointSizeF();
+    qreal size = m_config.font.pointSizeF();
     if (size <= 0) {
-        size = m_font.pointSize();
+        size = m_config.font.pointSize();
     }
     if (size > 1.0) {
-        m_font.setPointSizeF(size - 1.0);
+        m_config.font.setPointSizeF(size - 1.0);
         updateTerminalSize();
         update();
     }
 }
 
 void KodoTerm::resetZoom() {
-    m_font.setPointSize(10);
+    m_config.font.setPointSize(10);
     updateTerminalSize();
     update();
 }
@@ -975,7 +836,7 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
 
 void KodoTerm::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
-    painter.setFont(m_font);
+    painter.setFont(m_config.font);
 
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor vdefault_fg, vdefault_bg;
@@ -1180,53 +1041,15 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
 
-void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
-                                 TerminalTheme::ThemeFormat format) {
-    QList<TerminalTheme::ThemeInfo> themes;
-    QStringList filters;
-    if (format == TerminalTheme::ThemeFormat::Konsole) {
-        filters << "*.colorscheme";
-    } else {
-        filters << "*.json";
-    }
-
-    QDirIterator it(dirPath, filters, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        it.next();
-        TerminalTheme::ThemeInfo info;
-        info.path = it.filePath();
-        info.format = format;
-        if (format == TerminalTheme::ThemeFormat::Konsole) {
-            QFile file(info.path);
-            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                QTextStream in(&file);
-                while (!in.atEnd()) {
-                    QString line = in.readLine().trimmed();
-                    if (line.startsWith("Description=", Qt::CaseInsensitive)) {
-                        info.name = line.mid(12).trimmed();
-                        break;
-                    }
-                }
-            }
-            if (info.name.isEmpty()) {
-                info.name = QFileInfo(info.path).baseName();
-            }
-        } else {
-            QFile file(info.path);
-            if (file.open(QIODevice::ReadOnly)) {
-                QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-                info.name = doc.object().value("name").toString();
-            }
-            if (info.name.isEmpty()) {
-                info.name = QFileInfo(info.path).baseName();
-            }
+void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath, TerminalTheme::ThemeFormat format) {
+    QList<TerminalTheme::ThemeInfo> themes = TerminalTheme::builtInThemes();
+    QList<TerminalTheme::ThemeInfo> filteredThemes;
+    
+    for (const auto &theme : themes) {
+        if (theme.format == format) {
+            filteredThemes.append(theme);
         }
-        themes.append(info);
     }
-
-    std::sort(themes.begin(), themes.end(), [](const auto &a, const auto &b) {
-        return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
-    });
 
     auto addThemeAction = [this](QMenu *m, const TerminalTheme::ThemeInfo &info) {
         m->addAction(info.name, this, [this, info]() {
@@ -1238,13 +1061,13 @@ void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
         });
     };
 
-    if (themes.size() < 26) {
-        for (const auto &info : themes) {
+    if (filteredThemes.size() < 26) {
+        for (const auto &info : filteredThemes) {
             addThemeAction(parentMenu, info);
         }
     } else {
         QMap<QString, QMenu *> subMenus;
-        for (const auto &info : themes) {
+        for (const auto &info : filteredThemes) {
             QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
             if (!firstLetterChar.isLetter()) {
                 firstLetterChar = QChar('#');

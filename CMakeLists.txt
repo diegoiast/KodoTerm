@@ -41,6 +41,7 @@ target_include_directories(vterm PUBLIC
 
 set(KODOTERM_SOURCES
     src/KodoTerm.cpp
+    src/KodoTermConfig.cpp
     include/KodoTerm/KodoTerm.hpp
     src/PtyProcess.cpp
     src/PtyProcess.h
