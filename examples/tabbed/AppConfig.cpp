@@ -2,6 +2,7 @@
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
 #include "AppConfig.h"
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QSettings>
@@ -129,6 +130,25 @@ QString AppConfig::defaultShell() {
 void AppConfig::setDefaultShell(const QString &name) {
     QSettings s;
     s.setValue("DefaultShell", name);
+}
+
+void AppConfig::cleanupOldLogs(int daysToKeep) {
+    QString logDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(logDir);
+    if (!dir.exists()) {
+        return;
+    }
+
+    QDateTime limit = QDateTime::currentDateTime().addDays(-daysToKeep);
+    QStringList filters;
+    filters << "kodoterm_*.log";
+
+    QFileInfoList files = dir.entryInfoList(filters, QDir::Files);
+    for (const auto &fi : files) {
+        if (fi.lastModified() < limit) {
+            QFile::remove(fi.absoluteFilePath());
+        }
+    }
 }
 
 AppConfig::ShellInfo AppConfig::getShellInfo(const QString &shellName) {

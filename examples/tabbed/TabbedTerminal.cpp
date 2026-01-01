@@ -7,6 +7,7 @@
 #include <KodoTerm/KodoTerm.hpp>
 #include <QAction>
 #include <QCloseEvent>
+#include <QDebug>
 #include <QFileInfo>
 #include <QMenu>
 #include <QSettings>
@@ -124,34 +125,34 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     connect(m_autoSaveTimer, &QTimer::timeout, this, &TabbedTerminal::saveSession);
     m_autoSaveTimer->start();
 
+    AppConfig::cleanupOldLogs();
+
+    resize(1024, 768);
     // Restore Session
-    QSettings s;
-    restoreGeometry(s.value("Window/Geometry").toByteArray());
-    m_useFullScreenMode = s.value("Window/UseFullScreenMode", false).toBool();
+    QTimer::singleShot(0, this, [this]() {
+        QSettings s;
+        restoreGeometry(s.value("Window/Geometry").toByteArray());
 
-    int tabCount = s.beginReadArray("Session/Tabs");
-    if (tabCount > 0) {
-        for (int i = 0; i < tabCount; ++i) {
-            s.setArrayIndex(i);
-            QString program = s.value("program").toString();
-            QString cwd = s.value("cwd").toString();
-            addNewTab(program, cwd);
+        int tabCount = s.beginReadArray("Session/Tabs");
+        if (tabCount > 0) {
+            for (int i = 0; i < tabCount; ++i) {
+                s.setArrayIndex(i);
+                QString program = s.value("program").toString();
+                QString cwd = s.value("cwd").toString();
+                QString logPath = s.value("logPath").toString();
+                addNewTab(program, cwd, logPath);
+            }
+            s.endArray();
+
+            int activeTab = s.value("Session/ActiveTab", 0).toInt();
+            if (activeTab >= 0 && activeTab < m_tabs->count()) {
+                m_tabs->setCurrentIndex(activeTab);
+            }
+        } else {
+            addNewTab();
         }
-        s.endArray();
-
-        int activeTab = s.value("Session/ActiveTab", 0).toInt();
-        if (activeTab >= 0 && activeTab < m_tabs->count()) {
-            m_tabs->setCurrentIndex(activeTab);
-        }
-    } else {
-        addNewTab();
-    }
-
-    if (width() < 400 || height() < 300) {
-        resize(1024, 768);
-    }
+    });
 }
-
 void TabbedTerminal::saveSession() {
     QSettings s;
     s.setValue("Window/Geometry", saveGeometry());
@@ -166,6 +167,7 @@ void TabbedTerminal::saveSession() {
             s.setArrayIndex(i);
             s.setValue("program", console->program());
             s.setValue("cwd", console->cwd());
+            s.setValue("logPath", console->logPath());
         }
     }
     s.endArray();
@@ -178,7 +180,8 @@ void TabbedTerminal::closeEvent(QCloseEvent *event) {
     QMainWindow::closeEvent(event);
 }
 
-void TabbedTerminal::addNewTab(const QString &program, const QString &workingDirectory) {
+void TabbedTerminal::addNewTab(const QString &program, const QString &workingDirectory,
+                               const QString &logPath) {
     KodoTerm *console = new KodoTerm(m_tabs);
 
     // Load config
@@ -207,6 +210,20 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
         console->setWorkingDirectory(workingDirectory);
     }
 
+    // Restore previous content from log if available
+    if (!logPath.isEmpty()) {
+        QFile oldLog(logPath);
+        if (oldLog.open(QIODevice::ReadOnly)) {
+            qDebug() << "Restoring terminal content from:" << logPath;
+            // We only want to replay the session data, not the header.
+            // But for simplicity, we replay everything and vterm handles it.
+            // Note: If the log contains both input and output, this might be messy.
+            QByteArray data = oldLog.readAll();
+            console->onPtyReadyRead(data);
+            oldLog.close();
+        }
+    }
+
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
         int index = m_tabs->indexOf(console);
         if (index != -1) {
@@ -223,7 +240,26 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
     int index = m_tabs->addTab(console, tr("Terminal"));
     m_tabs->setCurrentIndex(index);
     console->setFocus();
-    console->start();
+
+    bool hasLog = false;
+    // Restore previous content from log if available
+    if (!logPath.isEmpty()) {
+        QFile oldLog(logPath);
+        if (oldLog.open(QIODevice::ReadOnly)) {
+            QByteArray data = oldLog.readAll();
+            int headerEnd = data.indexOf("----------------------------\r\n");
+            if (headerEnd != -1) {
+                data = data.mid(headerEnd + 30);
+            }
+            console->onPtyReadyRead(data);
+            console->onPtyReadyRead("\r\n"); // Add newline after restoring
+            console->scrollToBottom();
+            oldLog.close();
+            hasLog = true;
+        }
+    }
+
+    console->start(!hasLog);
 }
 
 void TabbedTerminal::showConfigDialog() {

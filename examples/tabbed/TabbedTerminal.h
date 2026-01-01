@@ -12,7 +12,8 @@ class TabbedTerminal : public QMainWindow {
     TabbedTerminal(QWidget *parent = nullptr);
 
   public slots:
-    void addNewTab(const QString &program = QString(), const QString &workingDirectory = QString());
+    void addNewTab(const QString &program = QString(), const QString &workingDirectory = QString(),
+                   const QString &logPath = QString());
     void closeCurrentTab();
     void closeTab(QWidget *w);
     void nextTab();

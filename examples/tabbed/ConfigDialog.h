@@ -10,6 +10,7 @@
 class QListWidget;
 class QComboBox;
 class QFontComboBox;
+class QLineEdit;
 class QSpinBox;
 class QCheckBox;
 
@@ -47,5 +48,7 @@ class ConfigDialog : public QDialog {
     QCheckBox *m_visualBell;
     QCheckBox *m_audibleBell;
     QCheckBox *m_fullScreen;
+    QCheckBox *m_enableLogging;
+    QLineEdit *m_logDirectory;
     QSpinBox *m_maxScrollback;
 };

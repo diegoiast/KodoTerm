@@ -86,7 +86,7 @@ if(BUILD_EXAMPLES)
       KodoTerm::KodoTerm
     )
 
-    add_executable(KodoTermTabbed WIN32
+    add_executable(KodoShell WIN32
       examples/tabbed/main.cpp
       examples/tabbed/TabbedTerminal.cpp
       examples/tabbed/TabbedTerminal.h
@@ -95,7 +95,7 @@ if(BUILD_EXAMPLES)
       examples/tabbed/ConfigDialog.cpp
       examples/tabbed/ConfigDialog.h
     )
-    target_link_libraries(KodoTermTabbed PRIVATE
+    target_link_libraries(KodoShell PRIVATE
       Qt6::Core
       Qt6::Gui
       Qt6::Widgets

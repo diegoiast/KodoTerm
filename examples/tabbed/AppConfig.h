@@ -21,4 +21,8 @@ class AppConfig {
     static void setDefaultShell(const QString &name);
 
     static ShellInfo getShellInfo(const QString &shellName);
+
+    static void cleanupOldLogs(int daysToKeep = 7);
+
+    // Session Management
 };

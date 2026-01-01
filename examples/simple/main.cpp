@@ -38,5 +38,6 @@ int main(int argc, char *argv[]) {
     mainWindow.resize(800, 600);
     mainWindow.setWindowTitle("KodoTerm example");
     mainWindow.show();
+    console->start();
     return app.exec();
 }

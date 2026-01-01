@@ -10,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
@@ -87,6 +88,14 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
     m_fullScreen = new QCheckBox(tr("Use Borderless Full Screen mode"), terminalTab);
 
+    m_enableLogging = new QCheckBox(tr("Enable Session Logging"), terminalTab);
+    QHBoxLayout *logDirLayout = new QHBoxLayout();
+    m_logDirectory = new QLineEdit(terminalTab);
+    QPushButton *browseLogBtn = new QPushButton(tr("Browse..."), terminalTab);
+    logDirLayout->addWidget(new QLabel(tr("Log Directory:")));
+    logDirLayout->addWidget(m_logDirectory, 1);
+    logDirLayout->addWidget(browseLogBtn);
+
     QHBoxLayout *sbLayout = new QHBoxLayout();
     m_maxScrollback = new QSpinBox(terminalTab);
     m_maxScrollback->setRange(0, 100000);
@@ -103,6 +112,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     termLayout->addWidget(m_visualBell);
     termLayout->addWidget(m_audibleBell);
     termLayout->addWidget(m_fullScreen);
+    termLayout->addWidget(m_enableLogging);
+    termLayout->addLayout(logDirLayout);
     termLayout->addLayout(sbLayout);
     termLayout->addStretch();
 
@@ -120,6 +131,13 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     // Connections
     connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addShell);
     connect(removeBtn, &QPushButton::clicked, this, &ConfigDialog::removeShell);
+    connect(browseLogBtn, &QPushButton::clicked, this, [this]() {
+        QString dir = QFileDialog::getExistingDirectory(this, tr("Select Log Directory"),
+                                                        m_logDirectory->text());
+        if (!dir.isEmpty()) {
+            m_logDirectory->setText(dir);
+        }
+    });
     connect(okBtn, &QPushButton::clicked, this, &ConfigDialog::save);
     connect(cancelBtn, &QPushButton::clicked, this, &ConfigDialog::reject);
 
@@ -147,6 +165,7 @@ void ConfigDialog::loadSettings() {
 
     KodoTermConfig config;
     config.load(s);
+    setTerminalConfig(config);
 }
 
 void ConfigDialog::addShell() {
@@ -217,6 +236,8 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.mouseWheelZoom = m_mouseWheelZoom->isChecked();
     config.visualBell = m_visualBell->isChecked();
     config.audibleBell = m_audibleBell->isChecked();
+    config.enableLogging = m_enableLogging->isChecked();
+    config.logDirectory = m_logDirectory->text();
     config.maxScrollback = m_maxScrollback->value();
 
     return config;
@@ -237,5 +258,7 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_mouseWheelZoom->setChecked(config.mouseWheelZoom);
     m_visualBell->setChecked(config.visualBell);
     m_audibleBell->setChecked(config.audibleBell);
+    m_enableLogging->setChecked(config.enableLogging);
+    m_logDirectory->setText(config.logDirectory);
     m_maxScrollback->setValue(config.maxScrollback);
 }
