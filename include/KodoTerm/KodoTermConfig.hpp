@@ -16,10 +16,7 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat {
-        Konsole,
-        WindowsTerminal
-    };
+    enum class ThemeFormat { Konsole, WindowsTerminal };
 
     struct ThemeInfo {
         QString name;

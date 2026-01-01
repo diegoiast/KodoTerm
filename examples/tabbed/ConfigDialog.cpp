@@ -3,20 +3,20 @@
 
 #include "ConfigDialog.h"
 
-#include <QTabWidget>
-#include <QVBoxLayout>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFileDialog>
+#include <QFontComboBox>
 #include <QHBoxLayout>
-#include <QPushButton>
+#include <QInputDialog>
 #include <QLabel>
 #include <QListWidget>
-#include <QComboBox>
-#include <QFontComboBox>
-#include <QSpinBox>
-#include <QCheckBox>
-#include <QFileDialog>
-#include <QInputDialog>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSettings>
+#include <QSpinBox>
+#include <QTabWidget>
+#include <QVBoxLayout>
 
 ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle(tr("Configuration"));
@@ -32,7 +32,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
 
     QLabel *shellsLabel = new QLabel(tr("Available Shells:"), generalTab);
     m_shellList = new QListWidget(generalTab);
-    
+
     QHBoxLayout *shellBtnLayout = new QHBoxLayout();
     QPushButton *addBtn = new QPushButton(tr("Add..."), generalTab);
     QPushButton *removeBtn = new QPushButton(tr("Remove"), generalTab);
@@ -51,7 +51,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     generalLayout->addWidget(m_shellList);
     generalLayout->addLayout(shellBtnLayout);
     generalLayout->addLayout(defaultShellLayout);
-    
+
     tabs->addTab(generalTab, tr("General"));
 
     // --- Terminal Tab ---
@@ -62,8 +62,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     m_fontCombo = new QFontComboBox(terminalTab);
     m_fontCombo->setEditable(false); // Only allow selecting existing fonts
     // Filter for monospaced fonts? KodoTerm usually works best with them.
-    m_fontCombo->setFontFilters(QFontComboBox::MonospacedFonts); 
-    
+    m_fontCombo->setFontFilters(QFontComboBox::MonospacedFonts);
+
     m_fontSizeSpin = new QSpinBox(terminalTab);
     m_fontSizeSpin->setRange(6, 72);
     fontLayout->addWidget(new QLabel(tr("Font:")));
@@ -85,7 +85,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     m_mouseWheelZoom = new QCheckBox(tr("Mouse wheel zoom"), terminalTab);
     m_visualBell = new QCheckBox(tr("Visual Bell"), terminalTab);
     m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
-    
+
     QHBoxLayout *sbLayout = new QHBoxLayout();
     m_maxScrollback = new QSpinBox(terminalTab);
     m_maxScrollback->setRange(0, 100000);
@@ -140,8 +140,9 @@ void ConfigDialog::loadSettings() {
     m_defaultShellCombo->setCurrentText(AppConfig::defaultShell());
 
     // Terminal
-    // We assume setTerminalConfig is called by caller to populate, OR we load from QSettings directly here?
-    // The requirement says "save the settings in a QSettings". So we can load from there too.
+    // We assume setTerminalConfig is called by caller to populate, OR we load from QSettings
+    // directly here? The requirement says "save the settings in a QSettings". So we can load from
+    // there too.
     QSettings s("Diego Iastrubni", "KodoTermTabbed");
     KodoTermConfig config;
     config.load(s); // Uses "Theme" group by default for theme
@@ -150,10 +151,14 @@ void ConfigDialog::loadSettings() {
 
 void ConfigDialog::addShell() {
     QString name = QInputDialog::getText(this, tr("Add Shell"), tr("Shell Name:"));
-    if (name.isEmpty()) return;
+    if (name.isEmpty()) {
+        return;
+    }
 
     QString path = QFileDialog::getOpenFileName(this, tr("Select Shell Executable"));
-    if (path.isEmpty()) return;
+    if (path.isEmpty()) {
+        return;
+    }
 
     m_currentShells.append({name, path});
     if (name == path) {
@@ -194,7 +199,7 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     KodoTermConfig config;
     config.font = m_fontCombo->currentFont();
     config.font.setPointSize(m_fontSizeSpin->value());
-    
+
     // Find theme by name match or path?
     // m_themeCombo stores path in userData
     QString themePath = m_themeCombo->currentData().toString();
@@ -211,14 +216,14 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.visualBell = m_visualBell->isChecked();
     config.audibleBell = m_audibleBell->isChecked();
     config.maxScrollback = m_maxScrollback->value();
-    
+
     return config;
 }
 
 void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_fontCombo->setCurrentFont(config.font);
     m_fontSizeSpin->setValue(config.font.pointSize());
-    
+
     // Select theme in combo
     int idx = m_themeCombo->findText(config.theme.name);
     if (idx != -1) {

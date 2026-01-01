@@ -123,14 +123,16 @@ void PtyProcessUnix::kill() {
 }
 
 bool PtyProcessUnix::isRoot() const {
-    if (m_masterFd < 0)
+    if (m_masterFd < 0) {
         return false;
+    }
 
     pid_t pgrp = tcgetpgrp(m_masterFd);
     if (pgrp <= 0) {
         // Fallback to initial pid
-        if (m_pid <= 0)
+        if (m_pid <= 0) {
             return false;
+        }
         pgrp = m_pid;
     }
 

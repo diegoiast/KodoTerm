@@ -43,7 +43,7 @@ static VTermColor toVTermColor(const QColor &c) {
 void KodoTerm::setConfig(const KodoTermConfig &config) {
     m_config = config;
     setTheme(m_config.theme); // Applies colors
-    updateTerminalSize(); // Updates font/cell size
+    updateTerminalSize();     // Updates font/cell size
     update();
 }
 
@@ -123,9 +123,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
 
     setFocusPolicy(Qt::StrongFocus);
-    QTimer::singleShot(0, this, [this]() {
-        start();
-    });
+    QTimer::singleShot(0, this, [this]() { start(); });
 }
 
 KodoTerm::~KodoTerm() {
@@ -164,18 +162,21 @@ bool KodoTerm::start() {
         int cols = (width() - sbWidth) / m_cellSize.width();
 
         size = QSize(cols, rows);
-        if (size.width() <= 0)
+        if (size.width() <= 0) {
             size.setWidth(80);
-        if (size.height() <= 0)
+        }
+        if (size.height() <= 0) {
             size.setHeight(25);
+        }
     }
 
     return m_pty->start(size);
 }
 
 void KodoTerm::setupPty() {
-    if (m_pty)
+    if (m_pty) {
         return;
+    }
 
     m_pty = PtyProcess::create(this);
     if (!m_pty) {
@@ -1041,10 +1042,11 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
 
-void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath, TerminalTheme::ThemeFormat format) {
+void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
+                                 TerminalTheme::ThemeFormat format) {
     QList<TerminalTheme::ThemeInfo> themes = TerminalTheme::builtInThemes();
     QList<TerminalTheme::ThemeInfo> filteredThemes;
-    
+
     for (const auto &theme : themes) {
         if (theme.format == format) {
             filteredThemes.append(theme);

@@ -2,23 +2,23 @@
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
 #include "AppConfig.h"
-#include <QFile>
-#include <QTextStream>
 #include <QDir>
-#include <QStandardPaths>
+#include <QFile>
 #include <QSettings>
+#include <QStandardPaths>
+#include <QTextStream>
 
-static QSettings getSettings() {
-    return QSettings("Diego Iastrubni", "KodoTermTabbed");
-}
+static QSettings getSettings() { return QSettings("Diego Iastrubni", "KodoTermTabbed"); }
 
 QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
     QList<ShellInfo> shells;
 
     auto add = [&](const QString &name, const QString &path) {
         QFileInfo newFi(path);
-        if (!newFi.exists()) return;
-        
+        if (!newFi.exists()) {
+            return;
+        }
+
         QString newCanonical = newFi.canonicalFilePath();
         for (const auto &existing : shells) {
             if (QFileInfo(existing.path).canonicalFilePath() == newCanonical) {
@@ -36,7 +36,7 @@ QList<AppConfig::ShellInfo> AppConfig::detectedShells() {
             add(name, p);
         }
     };
-    
+
     // Check for git bash explicitly in common locations if not in PATH
     QString gitBash = "C:\\Program Files\\Git\\bin\\bash.exe";
     if (QFile::exists(gitBash)) {
@@ -70,7 +70,7 @@ QList<AppConfig::ShellInfo> AppConfig::loadShells() {
     QSettings s = getSettings();
     QList<ShellInfo> shells;
     int size = s.beginReadArray("Shells");
-    
+
     QSet<QString> seenCanonicalPaths;
 
     if (size > 0) {
@@ -79,7 +79,7 @@ QList<AppConfig::ShellInfo> AppConfig::loadShells() {
             ShellInfo info;
             info.name = s.value("name").toString();
             info.path = s.value("path").toString();
-            
+
             QFileInfo fi(info.path);
             if (fi.exists()) {
                 QString canonical = fi.canonicalFilePath();
@@ -88,12 +88,12 @@ QList<AppConfig::ShellInfo> AppConfig::loadShells() {
                     seenCanonicalPaths.insert(canonical);
                 }
             } else {
-                 // Keep if it doesn't exist (custom path?) or skip? 
-                 // Let's keep distinct paths.
-                 if (!seenCanonicalPaths.contains(info.path)) {
-                     shells.append(info);
-                     seenCanonicalPaths.insert(info.path);
-                 }
+                // Keep if it doesn't exist (custom path?) or skip?
+                // Let's keep distinct paths.
+                if (!seenCanonicalPaths.contains(info.path)) {
+                    shells.append(info);
+                    seenCanonicalPaths.insert(info.path);
+                }
             }
         }
         s.endArray();

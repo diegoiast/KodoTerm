@@ -4,12 +4,12 @@
 #include "TabbedTerminal.h"
 #include "AppConfig.h"
 #include "ConfigDialog.h"
-#include <QToolButton>
-#include <QTabBar>
-#include <QMenu>
-#include <QAction>
-#include <QSettings>
 #include <KodoTerm/KodoTerm.hpp>
+#include <QAction>
+#include <QMenu>
+#include <QSettings>
+#include <QTabBar>
+#include <QToolButton>
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs = new QTabWidget(this);
@@ -24,16 +24,14 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     newTabBtn->setToolTip(tr("New Tab"));
     newTabBtn->setPopupMode(QToolButton::MenuButtonPopup);
     m_tabs->setCornerWidget(newTabBtn, Qt::TopLeftCorner);
-    
+
     QMenu *shellsMenu = new QMenu(newTabBtn);
-    
+
     auto updateMenu = [this, shellsMenu, newTabBtn]() {
         shellsMenu->clear();
         QList<AppConfig::ShellInfo> shells = AppConfig::loadShells();
         for (const auto &shell : shells) {
-            shellsMenu->addAction(shell.name, this, [this, shell]() {
-                addNewTab(shell.path);
-            });
+            shellsMenu->addAction(shell.name, this, [this, shell]() { addNewTab(shell.path); });
         }
         shellsMenu->addSeparator();
         shellsMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
@@ -42,7 +40,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
 
     newTabBtn->setMenu(shellsMenu);
-    connect(newTabBtn, &QToolButton::clicked, this, [this](){ addNewTab(); });
+    connect(newTabBtn, &QToolButton::clicked, this, [this]() { addNewTab(); });
 
     // Close Tab button (Right corner)
     QToolButton *closeTabBtn = new QToolButton(m_tabs);
@@ -55,7 +53,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     QAction *newTabAction = new QAction(tr("New Tab"), this);
     newTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
     newTabAction->setShortcutContext(Qt::ApplicationShortcut);
-    connect(newTabAction, &QAction::triggered, this, [this](){ addNewTab(); });
+    connect(newTabAction, &QAction::triggered, this, [this]() { addNewTab(); });
     addAction(newTabAction);
 
     QAction *closeTabAction = new QAction(tr("Close Tab"), this);
@@ -105,7 +103,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
 
 void TabbedTerminal::addNewTab(const QString &program) {
     KodoTerm *console = new KodoTerm(m_tabs);
-    
+
     // Load config
     QSettings s("Diego Iastrubni", "KodoTermTabbed");
     KodoTermConfig config;
@@ -119,10 +117,10 @@ void TabbedTerminal::addNewTab(const QString &program) {
         AppConfig::ShellInfo info = AppConfig::getShellInfo(defName);
         console->setProgram(info.path);
     }
-    
+
     // Theme is applied via setConfig, but let's make sure it's set if config was empty
     // config.load(s) might have loaded "Default" theme if settings were empty.
-    
+
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
         int index = m_tabs->indexOf(console);
         if (index != -1) {
@@ -133,9 +131,7 @@ void TabbedTerminal::addNewTab(const QString &program) {
 
     connect(console, &KodoTerm::cwdChanged, this, &TabbedTerminal::updateTabColors);
 
-    connect(console, &KodoTerm::finished, this, [this, console]() {
-        closeTab(console);
-    });
+    connect(console, &KodoTerm::finished, this, [this, console]() { closeTab(console); });
 
     int index = m_tabs->addTab(console, tr("Terminal"));
     m_tabs->setCurrentIndex(index);
@@ -186,14 +182,18 @@ void TabbedTerminal::closeTab(QWidget *w) {
 
 void TabbedTerminal::nextTab() {
     int count = m_tabs->count();
-    if (count <= 1) return;
+    if (count <= 1) {
+        return;
+    }
     int index = m_tabs->currentIndex();
     m_tabs->setCurrentIndex((index + 1) % count);
 }
 
 void TabbedTerminal::previousTab() {
     int count = m_tabs->count();
-    if (count <= 1) return;
+    if (count <= 1) {
+        return;
+    }
     int index = m_tabs->currentIndex();
     m_tabs->setCurrentIndex((index - 1 + count) % count);
 }
@@ -216,12 +216,14 @@ void TabbedTerminal::updateTabColors() {
     QTabBar *bar = m_tabs->tabBar();
     for (int i = 0; i < m_tabs->count(); ++i) {
         KodoTerm *console = qobject_cast<KodoTerm *>(m_tabs->widget(i));
-        if (!console)
+        if (!console) {
             continue;
+        }
 
         QString title = console->windowTitle();
-        if (title.isEmpty())
+        if (title.isEmpty()) {
             title = tr("Terminal");
+        }
 
         if (console->isRoot()) {
             bar->setTabTextColor(i, Qt::red);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
+#include <KodoTerm/KodoTerm.hpp>
 #include <QApplication>
 #include <QMainWindow>
-#include <KodoTerm/KodoTerm.hpp>
 
 int main(int argc, char *argv[]) {
     Q_INIT_RESOURCE(KodoTermThemes);
@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
 #else
     console->setProgram("/bin/bash");
 #endif
-    console->setTheme(TerminalTheme::loadKonsoleTheme(":/KodoTermThemes/konsole/Breeze.colorscheme"));
+    console->setTheme(
+        TerminalTheme::loadKonsoleTheme(":/KodoTermThemes/konsole/Breeze.colorscheme"));
 
     /*
      * Example: How to kill current program and start a new one with custom config:

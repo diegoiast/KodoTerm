@@ -8,10 +8,10 @@
 
 class TabbedTerminal : public QMainWindow {
     Q_OBJECT
-public:
+  public:
     TabbedTerminal(QWidget *parent = nullptr);
 
-public slots:
+  public slots:
     void addNewTab(const QString &program = QString());
     void closeCurrentTab();
     void closeTab(QWidget *w);
@@ -23,6 +23,6 @@ public slots:
     void showConfigDialog();
     void applySettings();
 
-private:
+  private:
     QTabWidget *m_tabs;
 };

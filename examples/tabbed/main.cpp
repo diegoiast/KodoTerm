@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
-#include <QApplication>
 #include "TabbedTerminal.h"
+#include <QApplication>
 
 int main(int argc, char *argv[]) {
     Q_INIT_RESOURCE(KodoTermThemes);

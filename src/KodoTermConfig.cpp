@@ -166,12 +166,15 @@ QJsonObject TerminalTheme::toJson() const {
 
 TerminalTheme TerminalTheme::fromJson(const QJsonObject &json) {
     TerminalTheme theme = defaultTheme();
-    if (json.contains("name"))
+    if (json.contains("name")) {
         theme.name = json["name"].toString();
-    if (json.contains("foreground"))
+    }
+    if (json.contains("foreground")) {
         theme.foreground = QColor(json["foreground"].toString());
-    if (json.contains("background"))
+    }
+    if (json.contains("background")) {
         theme.background = QColor(json["background"].toString());
+    }
     if (json.contains("palette") && json["palette"].isArray()) {
         QJsonArray arr = json["palette"].toArray();
         for (int i = 0; i < std::min(16, (int)arr.size()); ++i) {
@@ -182,8 +185,9 @@ TerminalTheme TerminalTheme::fromJson(const QJsonObject &json) {
 }
 
 void TerminalTheme::save(QSettings &settings, const QString &group) const {
-    if (!group.isEmpty())
+    if (!group.isEmpty()) {
         settings.beginGroup(group);
+    }
     settings.setValue("name", name);
     settings.setValue("foreground", foreground.name());
     settings.setValue("background", background.name());
@@ -192,13 +196,15 @@ void TerminalTheme::save(QSettings &settings, const QString &group) const {
         paletteList << c.name();
     }
     settings.setValue("palette", paletteList);
-    if (!group.isEmpty())
+    if (!group.isEmpty()) {
         settings.endGroup();
+    }
 }
 
 void TerminalTheme::load(QSettings &settings, const QString &group) {
-    if (!group.isEmpty())
+    if (!group.isEmpty()) {
         settings.beginGroup(group);
+    }
     name = settings.value("name", "Default").toString();
     foreground = QColor(settings.value("foreground", "#aaaaaa").toString());
     background = QColor(settings.value("background", "#000000").toString());
@@ -209,17 +215,20 @@ void TerminalTheme::load(QSettings &settings, const QString &group) {
         }
     } else {
         *this = defaultTheme(); // Fallback if palette is incomplete or missing
-        // Re-apply overrides if any
-         if (settings.contains("foreground")) foreground = QColor(settings.value("foreground").toString());
-         if (settings.contains("background")) background = QColor(settings.value("background").toString());
+                                // Re-apply overrides if any
+        if (settings.contains("foreground")) {
+            foreground = QColor(settings.value("foreground").toString());
+        }
+        if (settings.contains("background")) {
+            background = QColor(settings.value("background").toString());
+        }
     }
-    if (!group.isEmpty())
+    if (!group.isEmpty()) {
         settings.endGroup();
+    }
 }
 
-KodoTermConfig::KodoTermConfig() {
-    setDefaults();
-}
+KodoTermConfig::KodoTermConfig() { setDefaults(); }
 
 void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
@@ -243,18 +252,24 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
         font.setFamily(fontObj["family"].toString());
         font.setPointSizeF(fontObj["size"].toDouble());
     }
-    if (json.contains("copyOnSelect"))
+    if (json.contains("copyOnSelect")) {
         copyOnSelect = json["copyOnSelect"].toBool();
-    if (json.contains("pasteOnMiddleClick"))
+    }
+    if (json.contains("pasteOnMiddleClick")) {
         pasteOnMiddleClick = json["pasteOnMiddleClick"].toBool();
-    if (json.contains("mouseWheelZoom"))
+    }
+    if (json.contains("mouseWheelZoom")) {
         mouseWheelZoom = json["mouseWheelZoom"].toBool();
-    if (json.contains("visualBell"))
+    }
+    if (json.contains("visualBell")) {
         visualBell = json["visualBell"].toBool();
-    if (json.contains("audibleBell"))
+    }
+    if (json.contains("audibleBell")) {
         audibleBell = json["audibleBell"].toBool();
-    if (json.contains("maxScrollback"))
+    }
+    if (json.contains("maxScrollback")) {
         maxScrollback = json["maxScrollback"].toInt();
+    }
     if (json.contains("theme")) {
         theme = TerminalTheme::fromJson(json["theme"].toObject());
     }
@@ -288,7 +303,7 @@ void KodoTermConfig::load(QSettings &settings) {
     visualBell = settings.value("visualBell", visualBell).toBool();
     audibleBell = settings.value("audibleBell", audibleBell).toBool();
     maxScrollback = settings.value("maxScrollback", maxScrollback).toInt();
-    
+
     theme.load(settings, "Theme");
 }
 
@@ -301,6 +316,6 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("visualBell", visualBell);
     settings.setValue("audibleBell", audibleBell);
     settings.setValue("maxScrollback", maxScrollback);
-    
+
     theme.save(settings, "Theme");
 }

@@ -45,7 +45,6 @@ class KodoTerm : public QWidget {
     bool start();
 
   protected:
-
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;

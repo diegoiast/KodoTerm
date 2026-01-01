@@ -35,9 +35,7 @@ class PtyProcessWin::ReaderThread : public QThread {
         }
     }
 
-    void stop() {
-        m_running = false;
-    }
+    void stop() { m_running = false; }
 
   private:
     HANDLE m_hPipe;
@@ -159,7 +157,6 @@ bool PtyProcessWin::start(const QSize &size) {
 bool PtyProcessWin::start(const QString &program, const QStringList &arguments, const QSize &size) {
     return PtyProcess::start(program, arguments, size);
 }
-
 
 void PtyProcessWin::write(const QByteArray &data) {
     if (m_hPipeOut != INVALID_HANDLE_VALUE) {

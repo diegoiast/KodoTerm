@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <QDialog>
-#include <KodoTerm/KodoTermConfig.hpp>
 #include "AppConfig.h"
+#include <KodoTerm/KodoTermConfig.hpp>
+#include <QDialog>
 
 class QListWidget;
 class QComboBox;
@@ -16,7 +16,7 @@ class QCheckBox;
 class ConfigDialog : public QDialog {
     Q_OBJECT
 
-public:
+  public:
     explicit ConfigDialog(QWidget *parent = nullptr);
 
     KodoTermConfig getTerminalConfig() const;
@@ -24,14 +24,14 @@ public:
 
     void applySettings();
 
-private slots:
+  private slots:
     void addShell();
     void removeShell();
     void save();
 
-private:
+  private:
     void loadSettings();
-    
+
     // General Tab
     QListWidget *m_shellList;
     QComboBox *m_defaultShellCombo;
