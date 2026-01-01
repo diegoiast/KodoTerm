@@ -12,7 +12,7 @@ public:
     TabbedTerminal(QWidget *parent = nullptr);
 
 public slots:
-    void addNewTab();
+    void addNewTab(const QString &program = QString());
     void closeCurrentTab();
     void closeTab(QWidget *w);
     void nextTab();

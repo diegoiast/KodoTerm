@@ -2,9 +2,11 @@
 // Author: Diego Iastrubni <diegoiast@gmail.com>
 
 #include "TabbedTerminal.h"
+#include "AppConfig.h"
 #include <QToolButton>
 #include <QShortcut>
 #include <QTabBar>
+#include <QMenu>
 #include <KodoTerm/KodoTerm.hpp>
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
@@ -18,8 +20,18 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     QToolButton *newTabBtn = new QToolButton(m_tabs);
     newTabBtn->setText("+");
     newTabBtn->setToolTip(tr("New Tab"));
+    newTabBtn->setPopupMode(QToolButton::MenuButtonPopup);
     m_tabs->setCornerWidget(newTabBtn, Qt::TopLeftCorner);
-    connect(newTabBtn, &QToolButton::clicked, this, &TabbedTerminal::addNewTab);
+    
+    QMenu *shellsMenu = new QMenu(newTabBtn);
+    QStringList shells = AppConfig::availableShells();
+    for (const QString &shell : shells) {
+        shellsMenu->addAction(shell, this, [this, shell]() {
+            addNewTab(AppConfig::getShellInfo(shell).path);
+        });
+    }
+    newTabBtn->setMenu(shellsMenu);
+    connect(newTabBtn, &QToolButton::clicked, this, [this](){ addNewTab(); });
 
     // Close Tab button (Right corner)
     QToolButton *closeTabBtn = new QToolButton(m_tabs);
@@ -29,7 +41,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     connect(closeTabBtn, &QToolButton::clicked, this, &TabbedTerminal::closeCurrentTab);
 
     // Shortcuts
-    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N), this, SLOT(addNewTab()));
+    new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N), this, [this](){ addNewTab(); });
     new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Left), this, SLOT(previousTab()));
     new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Right), this, SLOT(nextTab()));
     new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Left), this, SLOT(moveTabLeft()));
@@ -44,14 +56,18 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     resize(1024, 768);
 }
 
-void TabbedTerminal::addNewTab() {
+void TabbedTerminal::addNewTab(const QString &program) {
     KodoTerm *console = new KodoTerm(m_tabs);
     
+    if (!program.isEmpty()) {
+        console->setProgram(program);
+    } else {
 #ifdef Q_OS_WIN
-    console->setProgram("powershell.exe");
+        console->setProgram("powershell.exe");
 #else
-    console->setProgram("/bin/bash");
+        console->setProgram("/bin/bash");
 #endif
+    }
     console->setTheme(TerminalTheme::loadKonsoleTheme(":/KodoTermThemes/konsole/Breeze.colorscheme"));
     
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
