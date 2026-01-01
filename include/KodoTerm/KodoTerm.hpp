@@ -78,6 +78,7 @@ class KodoTerm : public QWidget {
 
     void logData(const QByteArray &data);
     QString logPath() const { return m_logFile.fileName(); }
+    void setRestoreLog(const QString &path) { m_pendingLogReplay = path; }
     void scrollToBottom();
 
     void zoomIn();
@@ -164,4 +165,5 @@ class KodoTerm : public QWidget {
     QProcessEnvironment m_environment = QProcessEnvironment::systemEnvironment();
     KodoTermConfig m_config;
     QFile m_logFile;
+    QString m_pendingLogReplay;
 };

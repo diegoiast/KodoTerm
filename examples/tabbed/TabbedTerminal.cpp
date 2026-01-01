@@ -23,18 +23,21 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
 
     // New Tab button (Left corner)
     QToolButton *newTabBtn = new QToolButton(m_tabs);
-    newTabBtn->setText("+");
+    newTabBtn->setText(QString(QChar(0x2795))); // ➕
     newTabBtn->setToolTip(tr("New Tab"));
+    newTabBtn->setAutoRaise(true);
     newTabBtn->setPopupMode(QToolButton::MenuButtonPopup);
     m_tabs->setCornerWidget(newTabBtn, Qt::TopLeftCorner);
-
+    
     QMenu *shellsMenu = new QMenu(newTabBtn);
-
+    
     auto updateMenu = [this, shellsMenu, newTabBtn]() {
         shellsMenu->clear();
         QList<AppConfig::ShellInfo> shells = AppConfig::loadShells();
         for (const auto &shell : shells) {
-            shellsMenu->addAction(shell.name, this, [this, shell]() { addNewTab(shell.path); });
+            shellsMenu->addAction(shell.name, this, [this, shell]() {
+                addNewTab(shell.path);
+            });
         }
         shellsMenu->addSeparator();
         shellsMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
@@ -43,11 +46,12 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
 
     newTabBtn->setMenu(shellsMenu);
-    connect(newTabBtn, &QToolButton::clicked, this, [this]() { addNewTab(); });
+    connect(newTabBtn, &QToolButton::clicked, this, [this](){ addNewTab(); });
 
     // Close Tab button (Right corner)
     QToolButton *closeTabBtn = new QToolButton(m_tabs);
-    closeTabBtn->setText("x");
+    closeTabBtn->setText(QString(QChar(0x2715))); // ✕
+    closeTabBtn->setAutoRaise(true);
     closeTabBtn->setToolTip(tr("Close Current Tab"));
     m_tabs->setCornerWidget(closeTabBtn, Qt::TopRightCorner);
     connect(closeTabBtn, &QToolButton::clicked, this, &TabbedTerminal::closeCurrentTab);
@@ -210,20 +214,6 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
         console->setWorkingDirectory(workingDirectory);
     }
 
-    // Restore previous content from log if available
-    if (!logPath.isEmpty()) {
-        QFile oldLog(logPath);
-        if (oldLog.open(QIODevice::ReadOnly)) {
-            qDebug() << "Restoring terminal content from:" << logPath;
-            // We only want to replay the session data, not the header.
-            // But for simplicity, we replay everything and vterm handles it.
-            // Note: If the log contains both input and output, this might be messy.
-            QByteArray data = oldLog.readAll();
-            console->onPtyReadyRead(data);
-            oldLog.close();
-        }
-    }
-
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
         int index = m_tabs->indexOf(console);
         if (index != -1) {
@@ -241,25 +231,12 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
     m_tabs->setCurrentIndex(index);
     console->setFocus();
 
-    bool hasLog = false;
-    // Restore previous content from log if available
     if (!logPath.isEmpty()) {
-        QFile oldLog(logPath);
-        if (oldLog.open(QIODevice::ReadOnly)) {
-            QByteArray data = oldLog.readAll();
-            int headerEnd = data.indexOf("----------------------------\r\n");
-            if (headerEnd != -1) {
-                data = data.mid(headerEnd + 30);
-            }
-            console->onPtyReadyRead(data);
-            console->onPtyReadyRead("\r\n"); // Add newline after restoring
-            console->scrollToBottom();
-            oldLog.close();
-            hasLog = true;
-        }
+        console->setRestoreLog(logPath);
+        console->start(false); // Do not reset if restoring
+    } else {
+        console->start(true);
     }
-
-    console->start(!hasLog);
 }
 
 void TabbedTerminal::showConfigDialog() {

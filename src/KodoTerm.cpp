@@ -29,15 +29,6 @@ static void vterm_output_callback(const char *s, size_t len, void *user) {
     auto *pty = static_cast<PtyProcess *>(user);
     if (pty) {
         pty->write(QByteArray(s, (int)len));
-
-        // Parent of pty is KodoTerm
-        auto *terminal = qobject_cast<KodoTerm *>(pty->parent());
-        if (terminal && terminal->getConfig().enableLogging) {
-            // Accessing private m_logFile from static function requires a hack or better design.
-            // But since I'm already in src/KodoTerm.cpp, I can use a friend or just call a public
-            // method. Let's add a public method to KodoTerm to log input.
-            terminal->logData(QByteArray(s, (int)len));
-        }
     }
 }
 
@@ -183,18 +174,19 @@ bool KodoTerm::start(bool reset) {
         QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss_zzz");
         QString logName = QString("kodoterm_%1.log").arg(timestamp);
         m_logFile.setFileName(logDir.filePath(logName));
-        if (m_logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        if (m_logFile.open(QIODevice::WriteOnly)) {
             QString header = QString("--- KodoTerm Session Log ---\n"
                                      "Program: %1\n"
                                      "Arguments: %2\n"
                                      "CWD: %3\n"
                                      "Start: %4\n"
-                                     "----------------------------\n\n")
+                                     "LOG_START_MARKER\n")
                                  .arg(m_program)
                                  .arg(m_arguments.join(" "))
                                  .arg(m_workingDirectory)
                                  .arg(timestamp);
             m_logFile.write(header.toUtf8());
+            m_logFile.flush();
         }
     }
 
@@ -214,6 +206,7 @@ bool KodoTerm::start(bool reset) {
         }
     }
 
+    updateTerminalSize();
     bool success = m_pty->start(size);
     return success;
 }
@@ -346,6 +339,10 @@ int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
         cells[i].bg = line[i].bg;
         cells[i].width = line[i].width;
     }
+    for (int i = to_copy; i < cols; ++i) {
+        memset(&cells[i], 0, sizeof(VTermScreenCell));
+        cells[i].width = 1;
+    }
 
     m_scrollback.pop_back();
     m_scrollBar->setRange(0, (int)m_scrollback.size());
@@ -359,10 +356,6 @@ void KodoTerm::updateTerminalSize() {
         m_cellSize = QSize(10, 20);
     }
 
-    if (m_cellSize.isEmpty()) {
-        return;
-    }
-
     int rows = height() / m_cellSize.height();
     int sbWidth = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0;
     int cols = (width() - sbWidth) / m_cellSize.width();
@@ -372,16 +365,51 @@ void KodoTerm::updateTerminalSize() {
     if (cols <= 0) {
         cols = 1;
     }
-    m_scrollBar->setPageStep(rows);
+
+    int oldRows, oldCols;
     if (m_vterm) {
+        vterm_get_size(m_vterm, &oldRows, &oldCols);
+        if (rows == oldRows && cols == oldCols) {
+            // Even if size is the same, check if we need to replay log
+            if (m_pendingLogReplay.isEmpty()) {
+                return;
+            }
+        }
+
+        bool atBottom = m_scrollBar->value() == m_scrollBar->maximum();
         vterm_set_size(m_vterm, rows, cols);
-        if (m_vtermScreen) {
-            vterm_screen_flush_damage(m_vtermScreen);
+        vterm_screen_flush_damage(m_vtermScreen);
+        m_scrollBar->setPageStep(rows);
+        if (atBottom) {
+            m_scrollBar->setValue(m_scrollBar->maximum());
+        }
+
+        // Perform deferred log restoration if size is sane
+        if (!m_pendingLogReplay.isEmpty() && cols > 40) {
+            QString logPath = m_pendingLogReplay;
+            m_pendingLogReplay.clear(); // Clear first to avoid recursion
+
+            QFile oldLog(logPath);
+            if (oldLog.open(QIODevice::ReadOnly)) {
+                QByteArray data = oldLog.readAll();
+                int headerEnd = data.indexOf("LOG_START_MARKER\n");
+                if (headerEnd != -1) {
+                    data = data.mid(headerEnd + 17);
+                }
+                if (!data.isEmpty()) {
+                    onPtyReadyRead(data);
+                    onPtyReadyRead("\r\n");
+                    scrollToBottom();
+                }
+                oldLog.close();
+            }
         }
     }
+
     if (m_pty) {
         m_pty->resize(QSize(cols, rows));
     }
+    update();
 }
 
 int KodoTerm::onDamage(VTermRect rect, void *user) {
@@ -634,6 +662,9 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 VTermPos KodoTerm::mouseToPos(const QPoint &pos) const {
+    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
+        return {0, 0};
+    }
     int row = pos.y() / m_cellSize.height();
     int col = pos.x() / m_cellSize.width();
     int scrollbackLines = (int)m_scrollback.size();
@@ -881,7 +912,10 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
         std::swap(fg, bg);
     }
 
-    QRect rect(col * m_cellSize.width(), row * m_cellSize.height(), m_cellSize.width(),
+    int cellWidth = cell.width;
+    if (cellWidth <= 0) cellWidth = 1;
+
+    QRect rect(col * m_cellSize.width(), row * m_cellSize.height(), m_cellSize.width() * cellWidth,
                m_cellSize.height());
     painter.fillRect(rect, bg);
     if (cell.chars[0] != 0) {
@@ -922,6 +956,7 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
                 cell.bg = sc.bg;
                 cell.width = sc.width;
                 drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
+                if (cell.width > 1) col += (cell.width - 1);
             }
         } else {
             int vtermRow = absoluteRow - scrollbackLines;
@@ -929,6 +964,7 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
                 VTermScreenCell cell;
                 vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
                 drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
+                if (cell.width > 1) col += (cell.width - 1);
             }
         }
     }
