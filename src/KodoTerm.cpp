@@ -93,7 +93,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     }
     vterm_screen_enable_altscreen(m_vtermScreen, 1);
 
-    m_cwd = QDir::currentPath();
+    m_cwd = "";
 
     static VTermScreenCallbacks callbacks = {.damage = &KodoTerm::onDamage,
                                              .moverect = nullptr,
