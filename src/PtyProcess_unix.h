@@ -20,6 +20,7 @@ class PtyProcessUnix : public PtyProcess {
     void resize(const QSize &size) override;
     void kill() override;
     bool isRoot() const override;
+    QString foregroundProcessName() const override;
 
   private slots:
     void onReadyRead();

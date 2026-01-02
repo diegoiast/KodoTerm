@@ -20,6 +20,7 @@ class PtyProcessWin : public PtyProcess {
     void resize(const QSize &size) override;
     void kill() override;
     bool isRoot() const override;
+    QString foregroundProcessName() const override;
 
   private slots:
     void onReadThreadData(const QByteArray &data);

@@ -87,6 +87,7 @@ class KodoTerm : public QWidget {
     void zoomOut();
     void resetZoom();
 
+    QString foregroundProcessName() const;
     bool isRoot() const;
     const QString &cwd() const { return m_cwd; }
 

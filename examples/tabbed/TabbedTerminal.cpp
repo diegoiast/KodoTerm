@@ -371,20 +371,24 @@ void TabbedTerminal::updateTabColors() {
             continue;
         }
 
-        QString title = console->windowTitle();
-        if (!title.isEmpty()) {
-            QFileInfo titleInfo(title);
-            QFileInfo progInfo(console->program());
-            if (titleInfo.fileName().compare(progInfo.fileName(), Qt::CaseInsensitive) == 0) {
-                title = titleInfo.baseName();
-                if (!title.isEmpty() && title[0].isLower()) {
-                    title[0] = title[0].toUpper();
-                }
-            }
-        }
-
+        QString title = console->foregroundProcessName();
         if (title.isEmpty()) {
             title = tr("Terminal");
+        }
+
+        if (console->property("cwdReceived").toBool()) {
+            QString cwd = console->cwd();
+            QFileInfo cwdInfo(cwd);
+            QString dirName = cwdInfo.fileName();
+            if (dirName.isEmpty() && !cwd.isEmpty()) {
+                dirName = cwd; // Handle root or other cases
+            }
+            if (!dirName.isEmpty()) {
+                title += QString(" [%1]").arg(dirName);
+            }
+            m_tabs->setTabToolTip(i, cwd);
+        } else {
+            m_tabs->setTabToolTip(i, QString());
         }
 
         if (console->isRoot()) {
@@ -394,16 +398,8 @@ void TabbedTerminal::updateTabColors() {
             }
         } else {
             bar->setTabTextColor(i, QPalette().color(QPalette::WindowText));
-            if (title.startsWith("root@")) {
-                title = title.mid(5);
-            }
         }
         m_tabs->setTabText(i, title);
-        if (console->property("cwdReceived").toBool()) {
-            m_tabs->setTabToolTip(i, console->cwd());
-        } else {
-            m_tabs->setTabToolTip(i, QString());
-        }
     }
 }
 

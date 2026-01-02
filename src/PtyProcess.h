@@ -37,6 +37,7 @@ class PtyProcess : public QObject {
     virtual void resize(const QSize &size) = 0;
     virtual void kill() = 0;
     virtual bool isRoot() const = 0;
+    virtual QString foregroundProcessName() const = 0;
 
     // Factory method
     static PtyProcess *create(QObject *parent = nullptr);

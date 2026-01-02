@@ -10,6 +10,8 @@
 #else
 #include <pty.h>
 #endif
+#include <QFile>
+#include <QFileInfo>
 #include <cerrno>
 #include <fcntl.h>
 #include <signal.h>
@@ -143,6 +145,27 @@ bool PtyProcessUnix::isRoot() const {
         return st.st_uid == 0;
     }
     return false;
+}
+
+QString PtyProcessUnix::foregroundProcessName() const {
+    if (m_masterFd < 0) {
+        return QString();
+    }
+
+    pid_t pgrp = tcgetpgrp(m_masterFd);
+    if (pgrp <= 0) {
+        return QFileInfo(m_program).baseName();
+    }
+
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/comm", (int)pgrp);
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly)) {
+        return QString::fromUtf8(file.readAll().trimmed());
+    }
+
+    // Fallback to initial program
+    return QFileInfo(m_program).baseName();
 }
 
 void PtyProcessUnix::onReadyRead() {

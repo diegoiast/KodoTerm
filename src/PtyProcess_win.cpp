@@ -224,4 +224,6 @@ bool PtyProcessWin::isRoot() const {
     return false;
 }
 
+QString PtyProcessWin::foregroundProcessName() const { return QFileInfo(m_program).baseName(); }
+
 void PtyProcessWin::onReadThreadData(const QByteArray &data) { emit readyRead(data); }

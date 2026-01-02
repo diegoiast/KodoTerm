@@ -970,6 +970,10 @@ void KodoTerm::resetZoom() {
     update();
 }
 
+QString KodoTerm::foregroundProcessName() const {
+    return m_pty ? m_pty->foregroundProcessName() : QString();
+}
+
 bool KodoTerm::isRoot() const { return m_pty && m_pty->isRoot(); }
 
 QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *state) const {
