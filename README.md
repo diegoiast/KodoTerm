@@ -1,12 +1,16 @@
 # KodoTerm
 
-A modern C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
+A free C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
+
+![KodoShell running on linux](kodoshell-linux.png)
+
 
 ## Features
 
-- **Qt6 Integration**: Seamlessly integrates as a `QWidget`.
+- **Simple Qt6 integration**: Derives `QWidget`, and contains somewhat 
+   compatibility with `QProcess`.
 - **LibVTerm**: Uses the robust `libvterm` for VT100/xterm emulation.
-- **PTY Support**: Handles pseudo-terminal interactions via `forkpty`.
+- **PTY Support**: Handles pseudo-terminal on Windows and Unix.
 - **Themes**: supports themes from Konsole and WindowsTerminal. 
 
 ## Prerequisites
@@ -14,26 +18,34 @@ A modern C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 - C++20 compiler
 - CMake 3.24+
 - Qt6 (Core, Gui, Widgets)
-- Linux (for `forkpty` support)
 
 ## Build
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -B build -G Ninja
+cmake --build build
 ```
 
 ## Run Demo
 
 ```bash
-./build/KodoTermDemo
+./build/KodoTermSimple
+./build/KodoShell
 ```
 
 ## License
 
 MIT
+
+## Known issues
+
+1. It is rather slow. Specially on windows, painting takes too much time.
+2. The demo has an option to re-display the main window with shortcuts, this
+   is not working on Wayland.
+3. It seems that `libvterm` is no longer maintained. Alternatives should be used
+   eventually.
+4. See [`todo.txt`](todo.txt) some tasks are not done yet.
+
 
 ## Author
 
