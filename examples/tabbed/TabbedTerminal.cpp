@@ -13,6 +13,13 @@
 #include <QSettings>
 #include <QTabBar>
 #include <QToolButton>
+#include <QMessageBox>
+#include <QApplication>
+#include <QTimer>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs = new QTabWidget(this);
@@ -20,6 +27,8 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs->setDocumentMode(true);
     m_tabs->setMovable(true);
     setCentralWidget(m_tabs);
+
+    setupTrayIcon();
 
     // New Tab button (Left corner)
     QToolButton *newTabBtn = new QToolButton(m_tabs);
@@ -41,6 +50,13 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
         }
         shellsMenu->addSeparator();
         shellsMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
+        shellsMenu->addAction(tr("About..."), this, &TabbedTerminal::showAboutDialog);
+
+        QSettings s;
+        if (s.value("Window/EnableTray", false).toBool()) {
+            shellsMenu->addSeparator();
+            shellsMenu->addAction(tr("Quit"), qApp, &QApplication::quit);
+        }
     };
     updateMenu();
     connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
@@ -157,6 +173,13 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
         }
     });
 }
+
+TabbedTerminal::~TabbedTerminal() {
+#ifdef Q_OS_WIN
+    UnregisterHotKey((HWND)winId(), 100);
+#endif
+}
+
 void TabbedTerminal::saveSession() {
     QSettings s;
     s.setValue("Window/Geometry", saveGeometry());
@@ -180,8 +203,15 @@ void TabbedTerminal::saveSession() {
 }
 
 void TabbedTerminal::closeEvent(QCloseEvent *event) {
-    saveSession();
-    QMainWindow::closeEvent(event);
+    QSettings s;
+    bool enableTray = s.value("Window/EnableTray", false).toBool();
+    if (enableTray && m_trayIcon && m_trayIcon->isVisible()) {
+        hide();
+        event->ignore();
+    } else {
+        saveSession();
+        QMainWindow::closeEvent(event);
+    }
 }
 
 void TabbedTerminal::addNewTab(const QString &program, const QString &workingDirectory,
@@ -205,11 +235,9 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
     // Attempt to inject shell integration for CWD tracking (Bash mostly)
     QProcessEnvironment env = console->processEnvironment();
     QString progName = QFileInfo(console->program()).baseName();
-#ifndef Q_OS_WIN
     if (progName == "bash") {
         env.insert("PROMPT_COMMAND", "printf \"\\033]7;file://localhost%s\\033\\\\\" \"$PWD\"");
     }
-#endif
     console->setProcessEnvironment(env);
 
     if (!workingDirectory.isEmpty()) {
@@ -270,6 +298,7 @@ void TabbedTerminal::toggleExpanded() {
 void TabbedTerminal::applySettings() {
     QSettings s;
     m_useFullScreenMode = s.value("Window/UseFullScreenMode", false).toBool();
+    setupTrayIcon();
 
     KodoTermConfig config;
     config.load(s);
@@ -378,4 +407,81 @@ void TabbedTerminal::updateTabColors() {
             m_tabs->setTabToolTip(i, QString());
         }
     }
+}
+
+void TabbedTerminal::setupTrayIcon() {
+    QSettings s;
+    if (!s.value("Window/EnableTray", false).toBool()) {
+        if (m_trayIcon) {
+            m_trayIcon->hide();
+            m_trayIcon->deleteLater();
+            m_trayIcon = nullptr;
+        }
+        return;
+    }
+
+    if (m_trayIcon) {
+        return;
+    }
+
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setIcon(windowIcon());
+    m_trayIcon->setToolTip("KodoShell");
+
+#ifdef Q_OS_WIN
+    // Register Ctrl+Alt+T globally (ID 100)
+    RegisterHotKey((HWND)winId(), 100, MOD_CONTROL | MOD_ALT, 'T');
+#endif
+
+    QMenu *trayMenu = new QMenu(this);
+
+    m_toggleWindowAction = trayMenu->addAction(tr("Show/Hide Window"), this, &TabbedTerminal::toggleWindowVisibility);
+    m_toggleWindowAction->setShortcut(QKeySequence("Ctrl+Alt+T"));
+    m_toggleWindowAction->setShortcutContext(Qt::ApplicationShortcut);
+    addAction(m_toggleWindowAction);
+
+    trayMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
+    trayMenu->addAction(tr("About..."), this, &TabbedTerminal::showAboutDialog);
+    trayMenu->addSeparator();
+    trayMenu->addAction(tr("Quit"), qApp, &QApplication::quit);
+
+    m_trayIcon->setContextMenu(trayMenu);
+
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger) {
+            toggleWindowVisibility();
+        }
+    });
+
+    m_trayIcon->show();
+}
+
+void TabbedTerminal::toggleWindowVisibility() {
+    if (isVisible() && !isMinimized()) {
+        hide();
+    } else {
+        show();
+        showNormal();
+        activateWindow();
+        raise();
+    }
+}
+
+void TabbedTerminal::showAboutDialog() {
+    QMessageBox::about(this, tr("About KodoShell"),
+                       tr("KodoShell - A modern terminal emulator based on libvterm.\n\n"
+                          "Copyright (C) 2025-2026 Diego Iastrubni"));
+}
+
+bool TabbedTerminal::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
+#ifdef Q_OS_WIN
+    if (eventType == "windows_generic_MSG") {
+        MSG *msg = static_cast<MSG *>(message);
+        if (msg->message == WM_HOTKEY && msg->wParam == 100) {
+            toggleWindowVisibility();
+            return true;
+        }
+    }
+#endif
+    return QMainWindow::nativeEvent(eventType, message, result);
 }

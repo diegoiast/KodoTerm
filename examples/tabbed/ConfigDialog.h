@@ -48,6 +48,7 @@ class ConfigDialog : public QDialog {
     QCheckBox *m_visualBell;
     QCheckBox *m_audibleBell;
     QCheckBox *m_fullScreen;
+    QCheckBox *m_enableTray;
     QCheckBox *m_enableLogging;
     QLineEdit *m_logDirectory;
     QSpinBox *m_maxScrollback;

@@ -133,7 +133,8 @@ void AppConfig::setDefaultShell(const QString &name) {
 }
 
 void AppConfig::cleanupOldLogs(int daysToKeep) {
-    QString logDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString logDir =
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/KodoShell";
     QDir dir(logDir);
     if (!dir.exists()) {
         return;

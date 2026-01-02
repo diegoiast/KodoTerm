@@ -48,10 +48,13 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     defaultShellLayout->addWidget(m_defaultShellCombo);
     defaultShellLayout->addStretch();
 
+    m_enableTray = new QCheckBox(tr("Enable system tray support"), generalTab);
+
     generalLayout->addWidget(shellsLabel);
     generalLayout->addWidget(m_shellList);
     generalLayout->addLayout(shellBtnLayout);
     generalLayout->addLayout(defaultShellLayout);
+    generalLayout->addWidget(m_enableTray);
 
     tabs->addTab(generalTab, tr("General"));
 
@@ -162,6 +165,7 @@ void ConfigDialog::loadSettings() {
     // Terminal
     QSettings s;
     m_fullScreen->setChecked(s.value("Window/UseFullScreenMode", false).toBool());
+    m_enableTray->setChecked(s.value("Window/EnableTray", false).toBool());
 
     KodoTermConfig config;
     config.load(s);
@@ -209,6 +213,7 @@ void ConfigDialog::save() {
     // Save Terminal Config
     QSettings s;
     s.setValue("Window/UseFullScreenMode", m_fullScreen->isChecked());
+    s.setValue("Window/EnableTray", m_enableTray->isChecked());
 
     KodoTermConfig config = getTerminalConfig();
     config.save(s);

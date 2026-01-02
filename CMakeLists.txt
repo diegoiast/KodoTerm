@@ -76,30 +76,5 @@ target_link_libraries(KodoTerm PUBLIC
 )
 
 if(BUILD_EXAMPLES)
-    add_executable(KodoTermSimple WIN32
-      examples/simple/main.cpp
-    )
-    target_link_libraries(KodoTermSimple PRIVATE
-      Qt6::Core
-      Qt6::Gui
-      Qt6::Widgets
-      KodoTerm::KodoTerm
-    )
-
-    add_executable(KodoShell WIN32
-      examples/tabbed/main.cpp
-      examples/tabbed/TabbedTerminal.cpp
-      examples/tabbed/TabbedTerminal.h
-      examples/tabbed/AppConfig.cpp
-      examples/tabbed/AppConfig.h
-      examples/tabbed/ConfigDialog.cpp
-      examples/tabbed/ConfigDialog.h
-      examples/tabbed/KodoShell.qrc
-    )
-    target_link_libraries(KodoShell PRIVATE
-      Qt6::Core
-      Qt6::Gui
-      Qt6::Widgets
-      KodoTerm::KodoTerm
-    )
+    add_subdirectory(examples)
 endif()
