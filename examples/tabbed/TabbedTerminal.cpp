@@ -204,10 +204,12 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
 
     // Attempt to inject shell integration for CWD tracking (Bash mostly)
     QProcessEnvironment env = console->processEnvironment();
-    QString progName = QFileInfo(console->program()).fileName();
+    QString progName = QFileInfo(console->program()).baseName();
+#ifndef Q_OS_WIN
     if (progName == "bash") {
         env.insert("PROMPT_COMMAND", "printf \"\\033]7;file://localhost%s\\033\\\\\" \"$PWD\"");
     }
+#endif
     console->setProcessEnvironment(env);
 
     if (!workingDirectory.isEmpty()) {
