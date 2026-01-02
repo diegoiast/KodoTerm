@@ -240,7 +240,8 @@ void KodoTermConfig::setDefaults() {
     visualBell = true;
     audibleBell = true;
     enableLogging = true;
-    logDirectory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    logDirectory =
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/KodoShell";
     maxScrollback = 1000;
     theme = TerminalTheme::defaultTheme();
 }
