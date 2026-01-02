@@ -465,8 +465,8 @@ void TabbedTerminal::toggleWindowVisibility() {
 
 void TabbedTerminal::showAboutDialog() {
     QMessageBox::about(this, tr("About KodoShell"),
-                       tr("KodoShell - A modern terminal emulator based on libvterm.\n\n"
-                          "Copyright (C) 2025-2026 Diego Iastrubni"));
+                       tr("KodoShell - A terminal emulator example based KodoTerm.\n\n"
+                          "Copyright (C) 2026 Diego Iastrubni, MIT licensed."));
 }
 
 bool TabbedTerminal::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
