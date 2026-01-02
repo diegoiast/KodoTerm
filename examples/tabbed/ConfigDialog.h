@@ -51,5 +51,6 @@ class ConfigDialog : public QDialog {
     QCheckBox *m_enableTray;
     QCheckBox *m_enableLogging;
     QLineEdit *m_logDirectory;
+    QLineEdit *m_wordSelectionRegex;
     QSpinBox *m_maxScrollback;
 };

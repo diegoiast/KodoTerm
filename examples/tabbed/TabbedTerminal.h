@@ -4,8 +4,8 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QTabWidget>
 #include <QSystemTrayIcon>
+#include <QTabWidget>
 
 class TabbedTerminal : public QMainWindow {
     Q_OBJECT

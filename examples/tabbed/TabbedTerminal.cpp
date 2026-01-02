@@ -6,16 +6,16 @@
 #include "ConfigDialog.h"
 #include <KodoTerm/KodoTerm.hpp>
 #include <QAction>
+#include <QApplication>
 #include <QCloseEvent>
 #include <QDebug>
 #include <QFileInfo>
 #include <QMenu>
+#include <QMessageBox>
 #include <QSettings>
 #include <QTabBar>
-#include <QToolButton>
-#include <QMessageBox>
-#include <QApplication>
 #include <QTimer>
+#include <QToolButton>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -37,16 +37,14 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     newTabBtn->setAutoRaise(true);
     newTabBtn->setPopupMode(QToolButton::MenuButtonPopup);
     m_tabs->setCornerWidget(newTabBtn, Qt::TopLeftCorner);
-    
+
     QMenu *shellsMenu = new QMenu(newTabBtn);
-    
+
     auto updateMenu = [this, shellsMenu, newTabBtn]() {
         shellsMenu->clear();
         QList<AppConfig::ShellInfo> shells = AppConfig::loadShells();
         for (const auto &shell : shells) {
-            shellsMenu->addAction(shell.name, this, [this, shell]() {
-                addNewTab(shell.path);
-            });
+            shellsMenu->addAction(shell.name, this, [this, shell]() { addNewTab(shell.path); });
         }
         shellsMenu->addSeparator();
         shellsMenu->addAction(tr("Configure..."), this, &TabbedTerminal::showConfigDialog);
@@ -62,7 +60,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
 
     newTabBtn->setMenu(shellsMenu);
-    connect(newTabBtn, &QToolButton::clicked, this, [this](){ addNewTab(); });
+    connect(newTabBtn, &QToolButton::clicked, this, [this]() { addNewTab(); });
 
     // Close Tab button (Right corner)
     QToolButton *closeTabBtn = new QToolButton(m_tabs);
@@ -435,7 +433,8 @@ void TabbedTerminal::setupTrayIcon() {
 
     QMenu *trayMenu = new QMenu(this);
 
-    m_toggleWindowAction = trayMenu->addAction(tr("Show/Hide Window"), this, &TabbedTerminal::toggleWindowVisibility);
+    m_toggleWindowAction =
+        trayMenu->addAction(tr("Show/Hide Window"), this, &TabbedTerminal::toggleWindowVisibility);
     m_toggleWindowAction->setShortcut(QKeySequence("Ctrl+Alt+T"));
     m_toggleWindowAction->setShortcutContext(Qt::ApplicationShortcut);
     addAction(m_toggleWindowAction);
@@ -447,11 +446,12 @@ void TabbedTerminal::setupTrayIcon() {
 
     m_trayIcon->setContextMenu(trayMenu);
 
-    connect(m_trayIcon, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
-        if (reason == QSystemTrayIcon::Trigger) {
-            toggleWindowVisibility();
-        }
-    });
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this,
+            [this](QSystemTrayIcon::ActivationReason reason) {
+                if (reason == QSystemTrayIcon::Trigger) {
+                    toggleWindowVisibility();
+                }
+            });
 
     m_trayIcon->show();
 }

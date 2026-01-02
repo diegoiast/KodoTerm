@@ -242,6 +242,7 @@ void KodoTermConfig::setDefaults() {
     enableLogging = true;
     logDirectory =
         QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/KodoShell";
+    wordSelectionRegex = "[a-zA-Z0-9_\\.\\-\\/~\\:]+";
     maxScrollback = 1000;
     theme = TerminalTheme::defaultTheme();
 }
@@ -273,6 +274,9 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
     if (json.contains("logDirectory")) {
         logDirectory = json["logDirectory"].toString();
     }
+    if (json.contains("wordSelectionRegex")) {
+        wordSelectionRegex = json["wordSelectionRegex"].toString();
+    }
     if (json.contains("maxScrollback")) {
         maxScrollback = json["maxScrollback"].toInt();
     }
@@ -295,6 +299,7 @@ QJsonObject KodoTermConfig::saveToJson() const {
     obj["audibleBell"] = audibleBell;
     obj["enableLogging"] = enableLogging;
     obj["logDirectory"] = logDirectory;
+    obj["wordSelectionRegex"] = wordSelectionRegex;
     obj["maxScrollback"] = maxScrollback;
     obj["theme"] = theme.toJson();
     return obj;
@@ -312,6 +317,7 @@ void KodoTermConfig::load(QSettings &settings) {
     audibleBell = settings.value("audibleBell", audibleBell).toBool();
     enableLogging = settings.value("enableLogging", enableLogging).toBool();
     logDirectory = settings.value("logDirectory", logDirectory).toString();
+    wordSelectionRegex = settings.value("wordSelectionRegex", wordSelectionRegex).toString();
     maxScrollback = settings.value("maxScrollback", maxScrollback).toInt();
 
     theme.load(settings, "Theme");
@@ -327,6 +333,7 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("audibleBell", audibleBell);
     settings.setValue("enableLogging", enableLogging);
     settings.setValue("logDirectory", logDirectory);
+    settings.setValue("wordSelectionRegex", wordSelectionRegex);
     settings.setValue("maxScrollback", maxScrollback);
 
     theme.save(settings, "Theme");

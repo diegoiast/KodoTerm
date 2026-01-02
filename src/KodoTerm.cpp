@@ -21,6 +21,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QTextStream>
 #include <QUrl>
@@ -69,7 +70,7 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     m_scrollBar = new QScrollBar(Qt::Vertical, this);
     m_scrollBar->setRange(0, 0);
     connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
-
+    setMouseTracking(true);
     updateTerminalSize(); // Calculates m_cellSize
 
     m_cursorBlinkTimer = new QTimer(this);
@@ -553,10 +554,10 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
         mod = (VTermModifier)(mod | VTERM_MOD_ALT);
     }
 
-    VTermPos vpos = mouseToPos(event->pos());
     int screenRow = event->pos().y() / m_cellSize.height();
     int screenCol = event->pos().x() / m_cellSize.width();
 
+    // Terminal mouse mode
     if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
         int button = 0;
         if (event->button() == Qt::LeftButton) {
@@ -571,18 +572,81 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
             vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
             vterm_mouse_button(m_vterm, button, true, mod);
             vterm_screen_flush_damage(m_vtermScreen);
+            event->accept();
             return;
         }
     }
 
+    // Normal selection
     if (event->button() == Qt::LeftButton) {
         m_selecting = true;
-        m_selectionStart = vpos;
+        m_selectionStart = mouseToPos(event->pos());
         m_selectionEnd = m_selectionStart;
         update();
     } else if (event->button() == Qt::MiddleButton && m_config.pasteOnMiddleClick) {
         pasteFromClipboard();
     }
+
+    event->accept();
+}
+
+void KodoTerm::mouseDoubleClickEvent(QMouseEvent *event) {
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        return;
+    }
+    if (event->button() != Qt::LeftButton) {
+        return;
+    }
+
+    m_selecting = false; // Stop drag selection
+
+    VTermPos vpos = mouseToPos(event->pos());
+    int scrollbackLines = (int)m_scrollback.size();
+    int rows, cols;
+    vterm_get_size(m_vterm, &rows, &cols);
+
+    QString lineText;
+    lineText.fill(' ', cols);
+    int clickCol = vpos.col;
+
+    if (vpos.row < scrollbackLines) {
+        const SavedLine &line = m_scrollback[vpos.row];
+        int num_cols = std::min((int)line.size(), cols);
+        for (int c = 0; c < num_cols; ++c) {
+            if (line[c].chars[0] != 0) {
+                lineText[c] = QChar(static_cast<ushort>(line[c].chars[0] & 0xFFFF));
+            }
+        }
+    } else {
+        int vtermRow = vpos.row - scrollbackLines;
+        if (vtermRow < rows) {
+            for (int c = 0; c < cols; ++c) {
+                VTermScreenCell cell;
+                vterm_screen_get_cell(m_vtermScreen, {vtermRow, c}, &cell);
+                if (cell.chars[0] != 0) {
+                    lineText[c] = QChar(static_cast<ushort>(cell.chars[0] & 0xFFFF));
+                }
+            }
+        }
+    }
+
+    QRegularExpression re(m_config.wordSelectionRegex);
+    if (re.isValid()) {
+        QRegularExpressionMatchIterator it = re.globalMatch(lineText);
+        while (it.hasNext()) {
+            QRegularExpressionMatch match = it.next();
+            if (clickCol >= match.capturedStart() && clickCol < match.capturedEnd()) {
+                m_selectionStart = {vpos.row, static_cast<int>(match.capturedStart())};
+                m_selectionEnd = {vpos.row, static_cast<int>(match.capturedEnd() - 1)};
+                if (m_config.copyOnSelect) {
+                    copyToClipboard();
+                }
+                update();
+                break;
+            }
+        }
+    }
+    event->accept();
 }
 
 void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
@@ -611,6 +675,7 @@ void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
         m_selectionEnd = vpos;
         update();
     }
+    QWidget::mouseMoveEvent(event);
 }
 
 void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
@@ -625,7 +690,6 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
         mod = (VTermModifier)(mod | VTERM_MOD_ALT);
     }
 
-    VTermPos vpos = mouseToPos(event->pos());
     int screenRow = event->pos().y() / m_cellSize.height();
     int screenCol = event->pos().x() / m_cellSize.width();
 
@@ -643,6 +707,7 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
             vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
             vterm_mouse_button(m_vterm, button, false, mod);
             vterm_screen_flush_damage(m_vtermScreen);
+            event->accept();
             return;
         }
     }
@@ -650,6 +715,7 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton && m_selecting) {
         m_selecting = false;
         m_selectionEnd = mouseToPos(event->pos());
+
         if (m_selectionStart.row == m_selectionEnd.row &&
             m_selectionStart.col == m_selectionEnd.col) {
             m_selectionStart = {-1, -1};
@@ -659,6 +725,8 @@ void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
         }
         update();
     }
+
+    event->accept();
 }
 
 VTermPos KodoTerm::mouseToPos(const QPoint &pos) const {
@@ -913,7 +981,9 @@ void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCe
     }
 
     int cellWidth = cell.width;
-    if (cellWidth <= 0) cellWidth = 1;
+    if (cellWidth <= 0) {
+        cellWidth = 1;
+    }
 
     QRect rect(col * m_cellSize.width(), row * m_cellSize.height(), m_cellSize.width() * cellWidth,
                m_cellSize.height());
@@ -956,7 +1026,9 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
                 cell.bg = sc.bg;
                 cell.width = sc.width;
                 drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
-                if (cell.width > 1) col += (cell.width - 1);
+                if (cell.width > 1) {
+                    col += (cell.width - 1);
+                }
             }
         } else {
             int vtermRow = absoluteRow - scrollbackLines;
@@ -964,7 +1036,9 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
                 VTermScreenCell cell;
                 vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
                 drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
-                if (cell.width > 1) col += (cell.width - 1);
+                if (cell.width > 1) {
+                    col += (cell.width - 1);
+                }
             }
         }
     }

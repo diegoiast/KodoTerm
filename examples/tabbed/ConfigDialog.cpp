@@ -99,6 +99,11 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     logDirLayout->addWidget(m_logDirectory, 1);
     logDirLayout->addWidget(browseLogBtn);
 
+    QHBoxLayout *regexLayout = new QHBoxLayout();
+    m_wordSelectionRegex = new QLineEdit(terminalTab);
+    regexLayout->addWidget(new QLabel(tr("Word Selection Regex:")));
+    regexLayout->addWidget(m_wordSelectionRegex, 1);
+
     QHBoxLayout *sbLayout = new QHBoxLayout();
     m_maxScrollback = new QSpinBox(terminalTab);
     m_maxScrollback->setRange(0, 100000);
@@ -117,6 +122,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     termLayout->addWidget(m_fullScreen);
     termLayout->addWidget(m_enableLogging);
     termLayout->addLayout(logDirLayout);
+    termLayout->addLayout(regexLayout);
     termLayout->addLayout(sbLayout);
     termLayout->addStretch();
 
@@ -243,6 +249,7 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.audibleBell = m_audibleBell->isChecked();
     config.enableLogging = m_enableLogging->isChecked();
     config.logDirectory = m_logDirectory->text();
+    config.wordSelectionRegex = m_wordSelectionRegex->text();
     config.maxScrollback = m_maxScrollback->value();
 
     return config;
@@ -265,5 +272,6 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_audibleBell->setChecked(config.audibleBell);
     m_enableLogging->setChecked(config.enableLogging);
     m_logDirectory->setText(config.logDirectory);
+    m_wordSelectionRegex->setText(config.wordSelectionRegex);
     m_maxScrollback->setValue(config.maxScrollback);
 }

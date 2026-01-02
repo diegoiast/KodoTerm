@@ -47,6 +47,7 @@ class KodoTermConfig {
     bool audibleBell;
     bool enableLogging;
     QString logDirectory;
+    QString wordSelectionRegex;
     int maxScrollback;
     TerminalTheme theme;
 
