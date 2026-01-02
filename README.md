@@ -19,8 +19,6 @@ A free C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 - CMake 3.24+
 - Qt6 (Core, Gui, Widgets)
 
----
-
 > *Note for Windows developers*
 >
 > If you are developing an application that embeds this widget, you might need
@@ -33,7 +31,7 @@ A free C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 >
 > As far as I know... pull-requests are welcomed....
 >
-> see [src\PtyProcess_win.cpp](src\PtyProcess_win.cpp) for implementation.
+> see [src/PtyProcess_win.cpp](src/PtyProcess_win.cpp) for implementation.
 
 ## Build
 
