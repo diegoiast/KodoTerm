@@ -94,6 +94,7 @@ if(BUILD_EXAMPLES)
       examples/tabbed/AppConfig.h
       examples/tabbed/ConfigDialog.cpp
       examples/tabbed/ConfigDialog.h
+      examples/tabbed/KodoShell.qrc
     )
     target_link_libraries(KodoShell PRIVATE
       Qt6::Core

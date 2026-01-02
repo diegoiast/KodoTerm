@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setOrganizationName("KodoShell");
     app.setApplicationName("KodoShell");
+    app.setWindowIcon(QIcon(":/KodoShell.svg"));
     TabbedTerminal mainWindow;
     mainWindow.setWindowTitle("KodoShell");
     mainWindow.show();
