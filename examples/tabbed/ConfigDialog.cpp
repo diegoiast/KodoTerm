@@ -89,6 +89,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     m_mouseWheelZoom = new QCheckBox(tr("Mouse wheel zoom"), terminalTab);
     m_visualBell = new QCheckBox(tr("Visual Bell"), terminalTab);
     m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
+    m_tripleClick = new QCheckBox(tr("Triple click selects whole line"), terminalTab);
     m_fullScreen = new QCheckBox(tr("Use Borderless Full Screen mode"), terminalTab);
 
     m_enableLogging = new QCheckBox(tr("Enable Session Logging"), terminalTab);
@@ -119,6 +120,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     termLayout->addWidget(m_mouseWheelZoom);
     termLayout->addWidget(m_visualBell);
     termLayout->addWidget(m_audibleBell);
+    termLayout->addWidget(m_tripleClick);
     termLayout->addWidget(m_fullScreen);
     termLayout->addWidget(m_enableLogging);
     termLayout->addLayout(logDirLayout);
@@ -247,6 +249,7 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.mouseWheelZoom = m_mouseWheelZoom->isChecked();
     config.visualBell = m_visualBell->isChecked();
     config.audibleBell = m_audibleBell->isChecked();
+    config.tripleClickSelectsLine = m_tripleClick->isChecked();
     config.enableLogging = m_enableLogging->isChecked();
     config.logDirectory = m_logDirectory->text();
     config.wordSelectionRegex = m_wordSelectionRegex->text();
@@ -270,6 +273,7 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_mouseWheelZoom->setChecked(config.mouseWheelZoom);
     m_visualBell->setChecked(config.visualBell);
     m_audibleBell->setChecked(config.audibleBell);
+    m_tripleClick->setChecked(config.tripleClickSelectsLine);
     m_enableLogging->setChecked(config.enableLogging);
     m_logDirectory->setText(config.logDirectory);
     m_wordSelectionRegex->setText(config.wordSelectionRegex);

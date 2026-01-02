@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QColor>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFont>
 #include <QMenu>
@@ -155,6 +156,10 @@ class KodoTerm : public QWidget {
     bool m_selecting = false;
     VTermPos m_selectionStart = {-1, -1};
     VTermPos m_selectionEnd = {-1, -1};
+
+    QElapsedTimer m_clickTimer;
+    int m_clickCount = 0;
+    QPoint m_lastClickPos;
 
     bool m_visualBellActive = false;
     QString m_cwd;

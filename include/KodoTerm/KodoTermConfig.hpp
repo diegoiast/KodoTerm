@@ -45,6 +45,7 @@ class KodoTermConfig {
     bool mouseWheelZoom;
     bool visualBell;
     bool audibleBell;
+    bool tripleClickSelectsLine;
     bool enableLogging;
     QString logDirectory;
     QString wordSelectionRegex;

@@ -239,6 +239,7 @@ void KodoTermConfig::setDefaults() {
     mouseWheelZoom = true;
     visualBell = true;
     audibleBell = true;
+    tripleClickSelectsLine = true;
     enableLogging = true;
     logDirectory =
         QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/KodoShell";
@@ -267,6 +268,9 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
     }
     if (json.contains("audibleBell")) {
         audibleBell = json["audibleBell"].toBool();
+    }
+    if (json.contains("tripleClickSelectsLine")) {
+        tripleClickSelectsLine = json["tripleClickSelectsLine"].toBool();
     }
     if (json.contains("enableLogging")) {
         enableLogging = json["enableLogging"].toBool();
@@ -297,6 +301,7 @@ QJsonObject KodoTermConfig::saveToJson() const {
     obj["mouseWheelZoom"] = mouseWheelZoom;
     obj["visualBell"] = visualBell;
     obj["audibleBell"] = audibleBell;
+    obj["tripleClickSelectsLine"] = tripleClickSelectsLine;
     obj["enableLogging"] = enableLogging;
     obj["logDirectory"] = logDirectory;
     obj["wordSelectionRegex"] = wordSelectionRegex;
@@ -315,6 +320,8 @@ void KodoTermConfig::load(QSettings &settings) {
     mouseWheelZoom = settings.value("mouseWheelZoom", mouseWheelZoom).toBool();
     visualBell = settings.value("visualBell", visualBell).toBool();
     audibleBell = settings.value("audibleBell", audibleBell).toBool();
+    tripleClickSelectsLine =
+        settings.value("tripleClickSelectsLine", tripleClickSelectsLine).toBool();
     enableLogging = settings.value("enableLogging", enableLogging).toBool();
     logDirectory = settings.value("logDirectory", logDirectory).toString();
     wordSelectionRegex = settings.value("wordSelectionRegex", wordSelectionRegex).toString();
@@ -331,6 +338,7 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("mouseWheelZoom", mouseWheelZoom);
     settings.setValue("visualBell", visualBell);
     settings.setValue("audibleBell", audibleBell);
+    settings.setValue("tripleClickSelectsLine", tripleClickSelectsLine);
     settings.setValue("enableLogging", enableLogging);
     settings.setValue("logDirectory", logDirectory);
     settings.setValue("wordSelectionRegex", wordSelectionRegex);

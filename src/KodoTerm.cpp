@@ -557,7 +557,6 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
     int screenRow = event->pos().y() / m_cellSize.height();
     int screenCol = event->pos().x() / m_cellSize.width();
 
-    // Terminal mouse mode
     if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
         int button = 0;
         if (event->button() == Qt::LeftButton) {
@@ -577,28 +576,51 @@ void KodoTerm::mousePressEvent(QMouseEvent *event) {
         }
     }
 
-    // Normal selection
     if (event->button() == Qt::LeftButton) {
-        m_selecting = true;
-        m_selectionStart = mouseToPos(event->pos());
-        m_selectionEnd = m_selectionStart;
+        if (!m_clickTimer.isValid() ||
+            m_clickTimer.elapsed() > QApplication::doubleClickInterval() ||
+            (event->pos() - m_lastClickPos).manhattanLength() > 5) {
+            m_clickCount = 1;
+        } else {
+            m_clickCount++;
+        }
+        m_clickTimer.restart();
+        m_lastClickPos = event->pos();
+
+        VTermPos vpos = mouseToPos(event->pos());
+        if (m_clickCount == 3 && m_config.tripleClickSelectsLine) {
+            int rows, cols;
+            vterm_get_size(m_vterm, &rows, &cols);
+            m_selectionStart = {vpos.row, 0};
+            m_selectionEnd = {vpos.row, cols - 1};
+            m_selecting = false;
+            if (m_config.copyOnSelect) {
+                copyToClipboard();
+            }
+        } else if (m_clickCount == 1) {
+            m_selecting = true;
+            m_selectionStart = vpos;
+            m_selectionEnd = m_selectionStart;
+        }
         update();
     } else if (event->button() == Qt::MiddleButton && m_config.pasteOnMiddleClick) {
         pasteFromClipboard();
     }
-
     event->accept();
 }
 
 void KodoTerm::mouseDoubleClickEvent(QMouseEvent *event) {
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        return;
-    }
     if (event->button() != Qt::LeftButton) {
         return;
     }
+    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
+        return;
+    }
 
-    m_selecting = false; // Stop drag selection
+    m_clickCount = 2;
+    m_clickTimer.restart();
+    m_lastClickPos = event->pos();
+    m_selecting = false;
 
     VTermPos vpos = mouseToPos(event->pos());
     int scrollbackLines = (int)m_scrollback.size();
@@ -641,11 +663,11 @@ void KodoTerm::mouseDoubleClickEvent(QMouseEvent *event) {
                 if (m_config.copyOnSelect) {
                     copyToClipboard();
                 }
-                update();
                 break;
             }
         }
     }
+    update();
     event->accept();
 }
 
