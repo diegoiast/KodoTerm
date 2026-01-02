@@ -3,6 +3,7 @@
 
 #include "PtyProcess_win.h"
 #include <QDebug>
+#include <QDir>
 #include <vector>
 
 // Define necessary types if building on older SDKs or mingw that might lack them
@@ -104,7 +105,11 @@ bool PtyProcessWin::start(const QSize &size) {
     }
 
     // Command Line
-    QString cmd = m_program;
+    QString programNative = QDir::toNativeSeparators(m_program);
+    QString cmd = programNative;
+    if (cmd.contains(' ')) {
+        cmd = "\"" + cmd + "\"";
+    }
     for (const auto &arg : m_arguments) {
         cmd += " " + arg; // Simple quoting might be needed
     }
