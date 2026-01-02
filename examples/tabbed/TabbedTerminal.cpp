@@ -222,7 +222,10 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
         }
     });
 
-    connect(console, &KodoTerm::cwdChanged, this, &TabbedTerminal::updateTabColors);
+    connect(console, &KodoTerm::cwdChanged, [this, console](const QString &) {
+        console->setProperty("cwdReceived", true);
+        updateTabColors();
+    });
 
     connect(console, &KodoTerm::finished, this,
             [this, console](int exitCode, int exitStatus) { closeTab(console); });
@@ -340,6 +343,17 @@ void TabbedTerminal::updateTabColors() {
         }
 
         QString title = console->windowTitle();
+        if (!title.isEmpty()) {
+            QFileInfo titleInfo(title);
+            QFileInfo progInfo(console->program());
+            if (titleInfo.fileName().compare(progInfo.fileName(), Qt::CaseInsensitive) == 0) {
+                title = titleInfo.baseName();
+                if (!title.isEmpty() && title[0].isLower()) {
+                    title[0] = title[0].toUpper();
+                }
+            }
+        }
+
         if (title.isEmpty()) {
             title = tr("Terminal");
         }
@@ -356,6 +370,10 @@ void TabbedTerminal::updateTabColors() {
             }
         }
         m_tabs->setTabText(i, title);
-        m_tabs->setTabToolTip(i, console->cwd());
+        if (console->property("cwdReceived").toBool()) {
+            m_tabs->setTabToolTip(i, console->cwd());
+        } else {
+            m_tabs->setTabToolTip(i, QString());
+        }
     }
 }
