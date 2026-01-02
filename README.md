@@ -2,16 +2,16 @@
 
 A free C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
 
-![KodoShell running on linux](kodoshell-linux.png)
-
+![KodoShell running on Linux](kodoshell-linux.png)
+![KodoShell running on Windows](kodoshell-windows.png)
 
 ## Features
 
-- **Simple Qt6 integration**: Derives `QWidget`, and contains somewhat 
+- **Simple Qt6 integration**: Derives `QWidget`, and contains somewhat
    compatibility with `QProcess`.
 - **LibVTerm**: Uses the robust `libvterm` for VT100/xterm emulation.
 - **PTY Support**: Handles pseudo-terminal on Windows and Unix.
-- **Themes**: supports themes from Konsole and WindowsTerminal. 
+- **Themes**: supports themes from Konsole and WindowsTerminal.
 
 ## Prerequisites
 
