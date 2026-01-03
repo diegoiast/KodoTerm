@@ -26,14 +26,14 @@ class KodoTerm : public QWidget {
     Q_OBJECT
 
   public:
-    explicit KodoTerm(QWidget *parent = nullptr);
-    ~KodoTerm();
-
-    static void
-    populateThemeMenu(QMenu *parentMenu, TerminalTheme::ThemeFormat format,
-                      const std::function<void(const TerminalTheme::ThemeInfo &)> &callback);
-
-    void setTheme(const TerminalTheme &theme);
+        explicit KodoTerm(QWidget *parent = nullptr);
+        ~KodoTerm();
+    
+        static void populateThemeMenu(QMenu *parentMenu, const QString &title,
+                                      TerminalTheme::ThemeFormat format,
+                                      const std::function<void(const TerminalTheme::ThemeInfo &)> &callback);
+    
+        void setTheme(const TerminalTheme &theme);
     void setConfig(const KodoTermConfig &config);
     KodoTermConfig getConfig() const { return m_config; }
 

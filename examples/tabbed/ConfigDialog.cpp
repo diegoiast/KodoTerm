@@ -86,14 +86,14 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
         m_themeBtn->setText(info.name);
     };
 
-    QMenu *konsoleMenu = themeMenu->addMenu(tr("Konsole"));
-    KodoTerm::populateThemeMenu(konsoleMenu, TerminalTheme::ThemeFormat::Konsole, themeCallback);
+    KodoTerm::populateThemeMenu(themeMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole,
+                                themeCallback);
 
-    QMenu *wtMenu = themeMenu->addMenu(tr("Windows Terminal"));
-    KodoTerm::populateThemeMenu(wtMenu, TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
+    KodoTerm::populateThemeMenu(themeMenu, tr("Windows Terminal"),
+                                TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
 
-    QMenu *itermMenu = themeMenu->addMenu(tr("iTerm"));
-    KodoTerm::populateThemeMenu(itermMenu, TerminalTheme::ThemeFormat::ITerm, themeCallback);
+    KodoTerm::populateThemeMenu(themeMenu, tr("iTerm"), TerminalTheme::ThemeFormat::ITerm,
+                                themeCallback);
 
     m_themeBtn->setMenu(themeMenu);
 

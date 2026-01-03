@@ -930,17 +930,14 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
     menu->addSeparator();
     auto *themesMenu = menu->addMenu(tr("Themes"));
-    auto *konsoleMenu = themesMenu->addMenu(tr("Konsole"));
-    auto *wtMenu = themesMenu->addMenu(tr("Windows Terminal"));
-    auto *itermMenu = themesMenu->addMenu(tr("iTerm"));
 
     auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
         setTheme(TerminalTheme::loadTheme(info.path));
     };
 
-    populateThemeMenu(konsoleMenu, TerminalTheme::ThemeFormat::Konsole, themeCallback);
-    populateThemeMenu(wtMenu, TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
-    populateThemeMenu(itermMenu, TerminalTheme::ThemeFormat::ITerm, themeCallback);
+    populateThemeMenu(themesMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole, themeCallback);
+    populateThemeMenu(themesMenu, tr("Windows Terminal"), TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
+    populateThemeMenu(themesMenu, tr("iTerm"), TerminalTheme::ThemeFormat::ITerm, themeCallback);
 
     emit contextMenuRequested(menu, event->globalPos());
     menu->exec(event->globalPos());
@@ -1243,7 +1240,7 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
 
 void KodoTerm::populateThemeMenu(
-    QMenu *parentMenu, TerminalTheme::ThemeFormat format,
+    QMenu *parentMenu, const QString &title, TerminalTheme::ThemeFormat format,
     const std::function<void(const TerminalTheme::ThemeInfo &)> &callback) {
     QList<TerminalTheme::ThemeInfo> themes = TerminalTheme::builtInThemes();
     QList<TerminalTheme::ThemeInfo> filteredThemes;
@@ -1254,13 +1251,19 @@ void KodoTerm::populateThemeMenu(
         }
     }
 
+    if (filteredThemes.isEmpty()) {
+        return;
+    }
+
+    QMenu *menuToPopulate = parentMenu->addMenu(title);
+
     auto addThemeAction = [&](QMenu *m, const TerminalTheme::ThemeInfo &info) {
         m->addAction(info.name, [callback, info]() { callback(info); });
     };
 
     if (filteredThemes.size() < 26) {
         for (const auto &info : filteredThemes) {
-            addThemeAction(parentMenu, info);
+            addThemeAction(menuToPopulate, info);
         }
     } else {
         QMap<QString, QMenu *> subMenus;
@@ -1272,7 +1275,7 @@ void KodoTerm::populateThemeMenu(
 
             QString firstLetter(firstLetterChar);
             if (!subMenus.contains(firstLetter)) {
-                subMenus[firstLetter] = parentMenu->addMenu(firstLetter);
+                subMenus[firstLetter] = menuToPopulate->addMenu(firstLetter);
             }
             addThemeAction(subMenus[firstLetter], info);
         }
