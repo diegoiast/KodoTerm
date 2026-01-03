@@ -935,8 +935,10 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
         setTheme(TerminalTheme::loadTheme(info.path));
     };
 
-    populateThemeMenu(themesMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole, themeCallback);
-    populateThemeMenu(themesMenu, tr("Windows Terminal"), TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
+    populateThemeMenu(themesMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole,
+                      themeCallback);
+    populateThemeMenu(themesMenu, tr("Windows Terminal"),
+                      TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
     populateThemeMenu(themesMenu, tr("iTerm"), TerminalTheme::ThemeFormat::ITerm, themeCallback);
 
     emit contextMenuRequested(menu, event->globalPos());
@@ -1239,18 +1241,16 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
 
-void KodoTerm::focusInEvent(QFocusEvent* event) {
+void KodoTerm::focusInEvent(QFocusEvent *event) {
     QWidget::focusInEvent(event);
     m_cursorBlinkState = true;
     m_cursorBlinkTimer->start();
 }
 
-void KodoTerm::focusOutEvent(QFocusEvent* event) {
+void KodoTerm::focusOutEvent(QFocusEvent *event) {
     QWidget::focusOutEvent(event);
     m_cursorBlinkTimer->stop();
 }
-
-
 
 void KodoTerm::populateThemeMenu(
     QMenu *parentMenu, const QString &title, TerminalTheme::ThemeFormat format,
