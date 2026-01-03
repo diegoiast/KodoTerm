@@ -11,7 +11,11 @@ A free C++ Qt6 widget that embeds a terminal emulator using `libvterm`.
    compatibility with `QProcess`.
 - **LibVTerm**: Uses the robust `libvterm` for VT100/xterm emulation.
 - **PTY Support**: Handles pseudo-terminal on Windows and Unix.
-- **Themes**: supports themes from Konsole and WindowsTerminal.
+- **Themes**: supports themes from [Konsole](https://github.com/KDE/konsole/tree/master/data/color-schemes)
+  [WindowsTerminal]() and [iTerm](https://github.com/mbadolato/iTerm2-Color-Schemes).
+- **Mouse integration**: Double/tripple click support (selection), clicks are 
+  also sent to the applications.
+- **Visual bell**: can make a sound, or blink the screen.
 
 ## Prerequisites
 
