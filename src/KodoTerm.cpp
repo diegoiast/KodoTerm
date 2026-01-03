@@ -935,13 +935,7 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     auto *itermMenu = themesMenu->addMenu(tr("iTerm"));
 
     auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
-        if (info.format == TerminalTheme::ThemeFormat::Konsole) {
-            setTheme(TerminalTheme::loadKonsoleTheme(info.path));
-        } else if (info.format == TerminalTheme::ThemeFormat::ITerm) {
-            setTheme(TerminalTheme::loadITermTheme(info.path));
-        } else {
-            setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
-        }
+        setTheme(TerminalTheme::loadTheme(info.path));
     };
 
     populateThemeMenu(konsoleMenu, TerminalTheme::ThemeFormat::Konsole, themeCallback);

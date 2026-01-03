@@ -25,6 +25,7 @@ struct TerminalTheme {
     };
 
     static TerminalTheme defaultTheme();
+    static TerminalTheme loadTheme(const QString &path);
     static TerminalTheme loadKonsoleTheme(const QString &path);
     static TerminalTheme loadWindowsTerminalTheme(const QString &path);
     static TerminalTheme loadITermTheme(const QString &path);

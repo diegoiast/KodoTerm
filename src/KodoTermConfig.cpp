@@ -27,6 +27,19 @@ TerminalTheme TerminalTheme::defaultTheme() {
              QColor(255, 255, 255)}};
 }
 
+TerminalTheme TerminalTheme::loadTheme(const QString &path) {
+    if (path.endsWith(".colorscheme")) {
+        return loadKonsoleTheme(path);
+    } else if (path.endsWith(".itermcolors")) {
+        return loadITermTheme(path);
+    } else if (path.endsWith(".json")) {
+        return loadWindowsTerminalTheme(path);
+    }
+
+    // Fallback: try to guess content or return default
+    return defaultTheme();
+}
+
 TerminalTheme TerminalTheme::loadKonsoleTheme(const QString &path) {
     TerminalTheme theme = defaultTheme();
     QFile file(path);
@@ -144,12 +157,13 @@ TerminalTheme TerminalTheme::loadITermTheme(const QString &path) {
                                     if (xml.readNextStartElement()) {
                                         if (xml.name() == QLatin1String("real")) {
                                             double val = xml.readElementText().toDouble();
-                                            if (componentKey == "Red Component")
+                                            if (componentKey == "Red Component") {
                                                 red = val;
-                                            else if (componentKey == "Green Component")
+                                            } else if (componentKey == "Green Component") {
                                                 green = val;
-                                            else if (componentKey == "Blue Component")
+                                            } else if (componentKey == "Blue Component") {
                                                 blue = val;
+                                            }
                                         } else {
                                             xml.skipCurrentElement();
                                         }
@@ -165,8 +179,7 @@ TerminalTheme TerminalTheme::loadITermTheme(const QString &path) {
                                 theme.background = color;
                             } else if (keyName == "Foreground Color") {
                                 theme.foreground = color;
-                            } else if (keyName.startsWith("Ansi ") &&
-                                       keyName.endsWith(" Color")) {
+                            } else if (keyName.startsWith("Ansi ") && keyName.endsWith(" Color")) {
                                 int index = keyName.mid(5, keyName.length() - 11).toInt();
                                 if (index >= 0 && index < 16) {
                                     theme.palette[index] = color;
@@ -202,7 +215,8 @@ QList<TerminalTheme::ThemeInfo> TerminalTheme::builtInThemes() {
         } else if (info.path.endsWith(".itermcolors")) {
             info.format = ThemeFormat::ITerm;
             info.name = QFileInfo(info.path).baseName();
-            // Optional: Parse the file to find "Name" comment if available, but filename is usually good enough.
+            // Optional: Parse the file to find "Name" comment if available, but filename is usually
+            // good enough.
         } else {
             info.format = ThemeFormat::WindowsTerminal;
             QFile file(info.path);

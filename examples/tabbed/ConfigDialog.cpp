@@ -251,13 +251,7 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.font.setPointSize(m_fontSizeSpin->value());
 
     if (!m_selectedThemePath.isEmpty()) {
-        if (m_selectedThemePath.endsWith(".colorscheme")) {
-            config.theme = TerminalTheme::loadKonsoleTheme(m_selectedThemePath);
-        } else if (m_selectedThemePath.endsWith(".itermcolors")) {
-            config.theme = TerminalTheme::loadITermTheme(m_selectedThemePath);
-        } else {
-            config.theme = TerminalTheme::loadWindowsTerminalTheme(m_selectedThemePath);
-        }
+        config.theme = TerminalTheme::loadTheme(m_selectedThemePath);
     }
 
     config.copyOnSelect = m_copyOnSelect->isChecked();
