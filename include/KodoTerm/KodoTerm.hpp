@@ -61,8 +61,10 @@ class KodoTerm : public QWidget {
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
-    bool focusNextPrevChild(bool next) override; // To capture Tab
-
+    bool focusNextPrevChild(bool next) override;
+    void focusInEvent(QFocusEvent *event) override;
+    void focusOutEvent(QFocusEvent *event) override;
+    
   signals:
     void contextMenuRequested(QMenu *menu, const QPoint &pos);
     void cwdChanged(const QString &cwd);

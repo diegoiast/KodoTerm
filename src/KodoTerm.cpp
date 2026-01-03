@@ -1071,7 +1071,7 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
         }
     }
 
-    if (m_cursorVisible && currentScrollPos == scrollbackLines &&
+    if (hasFocus() && m_cursorVisible && currentScrollPos == scrollbackLines &&
         (!m_cursorBlink || m_cursorBlinkState)) {
         QRect cursorRect(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(),
                          m_cellSize.width(), m_cellSize.height());
@@ -1238,6 +1238,19 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 }
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
+
+void KodoTerm::focusInEvent(QFocusEvent* event) {
+    QWidget::focusInEvent(event);
+    m_cursorBlinkState = true;
+    m_cursorBlinkTimer->start();
+}
+
+void KodoTerm::focusOutEvent(QFocusEvent* event) {
+    QWidget::focusOutEvent(event);
+    m_cursorBlinkTimer->stop();
+}
+
+
 
 void KodoTerm::populateThemeMenu(
     QMenu *parentMenu, const QString &title, TerminalTheme::ThemeFormat format,
