@@ -16,7 +16,7 @@ struct TerminalTheme {
     QColor background;
     QColor palette[16];
 
-    enum class ThemeFormat { Konsole, WindowsTerminal };
+    enum class ThemeFormat { Konsole, WindowsTerminal, ITerm };
 
     struct ThemeInfo {
         QString name;
@@ -27,6 +27,7 @@ struct TerminalTheme {
     static TerminalTheme defaultTheme();
     static TerminalTheme loadKonsoleTheme(const QString &path);
     static TerminalTheme loadWindowsTerminalTheme(const QString &path);
+    static TerminalTheme loadITermTheme(const QString &path);
     static QList<ThemeInfo> builtInThemes();
 
     QJsonObject toJson() const;

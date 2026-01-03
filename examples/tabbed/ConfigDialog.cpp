@@ -92,6 +92,9 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     QMenu *wtMenu = themeMenu->addMenu(tr("Windows Terminal"));
     KodoTerm::populateThemeMenu(wtMenu, TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
 
+    QMenu *itermMenu = themeMenu->addMenu(tr("iTerm"));
+    KodoTerm::populateThemeMenu(itermMenu, TerminalTheme::ThemeFormat::ITerm, themeCallback);
+
     m_themeBtn->setMenu(themeMenu);
 
     themeLayout->addWidget(new QLabel(tr("Theme:")));
@@ -250,6 +253,8 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     if (!m_selectedThemePath.isEmpty()) {
         if (m_selectedThemePath.endsWith(".colorscheme")) {
             config.theme = TerminalTheme::loadKonsoleTheme(m_selectedThemePath);
+        } else if (m_selectedThemePath.endsWith(".itermcolors")) {
+            config.theme = TerminalTheme::loadITermTheme(m_selectedThemePath);
         } else {
             config.theme = TerminalTheme::loadWindowsTerminalTheme(m_selectedThemePath);
         }

@@ -14,6 +14,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QXmlStreamReader>
 
 TerminalTheme TerminalTheme::defaultTheme() {
     return {"Default",
@@ -120,10 +121,75 @@ TerminalTheme TerminalTheme::loadWindowsTerminalTheme(const QString &path) {
     return theme;
 }
 
+TerminalTheme TerminalTheme::loadITermTheme(const QString &path) {
+    TerminalTheme theme = defaultTheme();
+    theme.name = QFileInfo(path).baseName();
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return theme;
+    }
+
+    QXmlStreamReader xml(&file);
+    if (xml.readNextStartElement() && xml.name() == QLatin1String("plist")) {
+        if (xml.readNextStartElement() && xml.name() == QLatin1String("dict")) {
+            while (xml.readNextStartElement()) {
+                if (xml.name() == QLatin1String("key")) {
+                    QString keyName = xml.readElementText();
+                    if (xml.readNextStartElement()) {
+                        if (xml.name() == QLatin1String("dict")) {
+                            double red = 0.0, green = 0.0, blue = 0.0;
+                            while (xml.readNextStartElement()) {
+                                if (xml.name() == QLatin1String("key")) {
+                                    QString componentKey = xml.readElementText();
+                                    if (xml.readNextStartElement()) {
+                                        if (xml.name() == QLatin1String("real")) {
+                                            double val = xml.readElementText().toDouble();
+                                            if (componentKey == "Red Component")
+                                                red = val;
+                                            else if (componentKey == "Green Component")
+                                                green = val;
+                                            else if (componentKey == "Blue Component")
+                                                blue = val;
+                                        } else {
+                                            xml.skipCurrentElement();
+                                        }
+                                    }
+                                } else {
+                                    xml.skipCurrentElement();
+                                }
+                            }
+                            QColor color;
+                            color.setRgbF(red, green, blue);
+
+                            if (keyName == "Background Color") {
+                                theme.background = color;
+                            } else if (keyName == "Foreground Color") {
+                                theme.foreground = color;
+                            } else if (keyName.startsWith("Ansi ") &&
+                                       keyName.endsWith(" Color")) {
+                                int index = keyName.mid(5, keyName.length() - 11).toInt();
+                                if (index >= 0 && index < 16) {
+                                    theme.palette[index] = color;
+                                }
+                            }
+                        } else {
+                            xml.skipCurrentElement();
+                        }
+                    }
+                } else {
+                    xml.skipCurrentElement();
+                }
+            }
+        }
+    }
+    return theme;
+}
+
 QList<TerminalTheme::ThemeInfo> TerminalTheme::builtInThemes() {
     Q_INIT_RESOURCE(KodoTermThemes);
     QList<ThemeInfo> themes;
-    QDirIterator it(":/KodoTermThemes", QStringList() << "*.colorscheme" << "*.json", QDir::Files,
+    QDirIterator it(":/KodoTermThemes",
+                    QStringList() << "*.colorscheme" << "*.json" << "*.itermcolors", QDir::Files,
                     QDirIterator::Subdirectories);
     while (it.hasNext()) {
         it.next();
@@ -133,6 +199,10 @@ QList<TerminalTheme::ThemeInfo> TerminalTheme::builtInThemes() {
             info.format = ThemeFormat::Konsole;
             QSettings settings(info.path, QSettings::IniFormat);
             info.name = settings.value("General/Description", it.fileName()).toString();
+        } else if (info.path.endsWith(".itermcolors")) {
+            info.format = ThemeFormat::ITerm;
+            info.name = QFileInfo(info.path).baseName();
+            // Optional: Parse the file to find "Name" comment if available, but filename is usually good enough.
         } else {
             info.format = ThemeFormat::WindowsTerminal;
             QFile file(info.path);
