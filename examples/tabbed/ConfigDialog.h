@@ -41,7 +41,9 @@ class ConfigDialog : public QDialog {
     // Terminal Tab
     QFontComboBox *m_fontCombo;
     QSpinBox *m_fontSizeSpin;
-    QComboBox *m_themeCombo;
+    QPushButton *m_themeBtn;
+    QString m_selectedThemePath;
+
     QCheckBox *m_copyOnSelect;
     QCheckBox *m_pasteOnMiddleClick;
     QCheckBox *m_mouseWheelZoom;

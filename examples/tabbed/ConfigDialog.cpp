@@ -3,6 +3,7 @@
 
 #include "ConfigDialog.h"
 
+#include <KodoTerm/KodoTerm.hpp>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFileDialog>
@@ -12,6 +13,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMap>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
@@ -75,14 +78,24 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     fontLayout->addWidget(m_fontSizeSpin);
 
     QHBoxLayout *themeLayout = new QHBoxLayout();
-    m_themeCombo = new QComboBox(terminalTab);
-    // Populate themes
-    auto themes = TerminalTheme::builtInThemes();
-    for (const auto &info : themes) {
-        m_themeCombo->addItem(info.name, info.path);
-    }
+    m_themeBtn = new QPushButton(tr("Select Theme..."), terminalTab);
+    QMenu *themeMenu = new QMenu(m_themeBtn);
+
+    auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
+        m_selectedThemePath = info.path;
+        m_themeBtn->setText(info.name);
+    };
+
+    QMenu *konsoleMenu = themeMenu->addMenu(tr("Konsole"));
+    KodoTerm::populateThemeMenu(konsoleMenu, TerminalTheme::ThemeFormat::Konsole, themeCallback);
+
+    QMenu *wtMenu = themeMenu->addMenu(tr("Windows Terminal"));
+    KodoTerm::populateThemeMenu(wtMenu, TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
+
+    m_themeBtn->setMenu(themeMenu);
+
     themeLayout->addWidget(new QLabel(tr("Theme:")));
-    themeLayout->addWidget(m_themeCombo, 1);
+    themeLayout->addWidget(m_themeBtn, 1);
 
     m_copyOnSelect = new QCheckBox(tr("Copy on select"), terminalTab);
     m_pasteOnMiddleClick = new QCheckBox(tr("Paste on middle click"), terminalTab);
@@ -234,14 +247,12 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
     config.font = m_fontCombo->currentFont();
     config.font.setPointSize(m_fontSizeSpin->value());
 
-    // Find theme by name match or path?
-    // m_themeCombo stores path in userData
-    QString themePath = m_themeCombo->currentData().toString();
-    // We need to load the actual theme object
-    if (themePath.endsWith(".colorscheme")) {
-        config.theme = TerminalTheme::loadKonsoleTheme(themePath);
-    } else {
-        config.theme = TerminalTheme::loadWindowsTerminalTheme(themePath);
+    if (!m_selectedThemePath.isEmpty()) {
+        if (m_selectedThemePath.endsWith(".colorscheme")) {
+            config.theme = TerminalTheme::loadKonsoleTheme(m_selectedThemePath);
+        } else {
+            config.theme = TerminalTheme::loadWindowsTerminalTheme(m_selectedThemePath);
+        }
     }
 
     config.copyOnSelect = m_copyOnSelect->isChecked();
@@ -262,10 +273,13 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_fontCombo->setCurrentFont(config.font);
     m_fontSizeSpin->setValue(config.font.pointSize());
 
-    // Select theme in combo
-    int idx = m_themeCombo->findText(config.theme.name);
-    if (idx != -1) {
-        m_themeCombo->setCurrentIndex(idx);
+    auto themes = TerminalTheme::builtInThemes();
+    for (const auto &info : themes) {
+        if (info.name == config.theme.name) {
+            m_selectedThemePath = info.path;
+            m_themeBtn->setText(info.name);
+            break;
+        }
     }
 
     m_copyOnSelect->setChecked(config.copyOnSelect);

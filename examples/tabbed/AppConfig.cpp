@@ -5,24 +5,25 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QProcessEnvironment>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTextStream>
-#include <QProcessEnvironment>
 
-static QString systemCurrentShell()
-{
+static QString systemCurrentShell() {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
 
 #if defined(Q_OS_WIN)
     // Windows shell (usually cmd.exe or powershell)
-    if (env.contains("ComSpec"))
+    if (env.contains("ComSpec")) {
         return env.value("ComSpec");
+    }
     return QString();
 #else
     // Unix / Linux / macOS shell (bash, zsh, fish, etc.)
-    if (env.contains("SHELL"))
+    if (env.contains("SHELL")) {
         return env.value("SHELL");
+    }
     return QString();
 #endif
 }
@@ -137,10 +138,10 @@ QString AppConfig::defaultShell() {
     QString def = s.value("DefaultShell").toString();
     if (def.isEmpty()) {
         def = systemCurrentShell();
-/*        QList<ShellInfo> shells = loadShells();
-        if (!shells.isEmpty()) {
-            def = shells.first().name;
-        }*/
+        /*        QList<ShellInfo> shells = loadShells();
+                if (!shells.isEmpty()) {
+                    def = shells.first().name;
+                }*/
     }
     return def;
 }

@@ -933,9 +933,16 @@ void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
     auto *konsoleMenu = themesMenu->addMenu(tr("Konsole"));
     auto *wtMenu = themesMenu->addMenu(tr("Windows Terminal"));
 
-    populateThemeMenu(konsoleMenu, ":/KodoTermThemes/konsole", TerminalTheme::ThemeFormat::Konsole);
-    populateThemeMenu(wtMenu, ":/KodoTermThemes/windowsterminal",
-                      TerminalTheme::ThemeFormat::WindowsTerminal);
+    auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
+        if (info.format == TerminalTheme::ThemeFormat::Konsole) {
+            setTheme(TerminalTheme::loadKonsoleTheme(info.path));
+        } else {
+            setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
+        }
+    };
+
+    populateThemeMenu(konsoleMenu, TerminalTheme::ThemeFormat::Konsole, themeCallback);
+    populateThemeMenu(wtMenu, TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
 
     emit contextMenuRequested(menu, event->globalPos());
     menu->exec(event->globalPos());
@@ -1237,8 +1244,9 @@ void KodoTerm::keyPressEvent(QKeyEvent *event) {
 
 bool KodoTerm::focusNextPrevChild(bool next) { return false; }
 
-void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
-                                 TerminalTheme::ThemeFormat format) {
+void KodoTerm::populateThemeMenu(
+    QMenu *parentMenu, TerminalTheme::ThemeFormat format,
+    const std::function<void(const TerminalTheme::ThemeInfo &)> &callback) {
     QList<TerminalTheme::ThemeInfo> themes = TerminalTheme::builtInThemes();
     QList<TerminalTheme::ThemeInfo> filteredThemes;
 
@@ -1248,14 +1256,8 @@ void KodoTerm::populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
         }
     }
 
-    auto addThemeAction = [this](QMenu *m, const TerminalTheme::ThemeInfo &info) {
-        m->addAction(info.name, this, [this, info]() {
-            if (info.format == TerminalTheme::ThemeFormat::Konsole) {
-                setTheme(TerminalTheme::loadKonsoleTheme(info.path));
-            } else {
-                setTheme(TerminalTheme::loadWindowsTerminalTheme(info.path));
-            }
-        });
+    auto addThemeAction = [&](QMenu *m, const TerminalTheme::ThemeInfo &info) {
+        m->addAction(info.name, [callback, info]() { callback(info); });
     };
 
     if (filteredThemes.size() < 26) {

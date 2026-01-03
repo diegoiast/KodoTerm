@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QWidget>
 #include <deque>
+#include <functional>
 #include <vector>
 #include <vterm.h>
 
@@ -27,6 +28,10 @@ class KodoTerm : public QWidget {
   public:
     explicit KodoTerm(QWidget *parent = nullptr);
     ~KodoTerm();
+
+    static void
+    populateThemeMenu(QMenu *parentMenu, TerminalTheme::ThemeFormat format,
+                      const std::function<void(const TerminalTheme::ThemeInfo &)> &callback);
 
     void setTheme(const TerminalTheme &theme);
     void setConfig(const KodoTermConfig &config);
@@ -106,8 +111,6 @@ class KodoTerm : public QWidget {
   private:
     void setupPty();
     void updateTerminalSize();
-    void populateThemeMenu(QMenu *parentMenu, const QString &dirPath,
-                           TerminalTheme::ThemeFormat format);
     void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected);
     QColor mapColor(const VTermColor &c, const VTermState *state) const;
     QString getTextRange(VTermPos start, VTermPos end);
