@@ -113,7 +113,6 @@ class KodoTerm : public QWidget {
   private:
     void setupPty();
     void updateTerminalSize();
-    void drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell, bool selected);
     QColor mapColor(const VTermColor &c, const VTermState *state) const;
     QString getTextRange(VTermPos start, VTermPos end);
     bool isSelected(int row, int col) const;

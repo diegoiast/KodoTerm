@@ -991,42 +991,6 @@ QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *state) const {
     return Qt::white;
 }
 
-void KodoTerm::drawCell(QPainter &painter, int row, int col, const VTermScreenCell &cell,
-                        bool selected) {
-    VTermState *state = vterm_obtain_state(m_vterm);
-    VTermColor vdefault_fg, vdefault_bg;
-    vterm_state_get_default_colors(state, &vdefault_fg, &vdefault_bg);
-
-    QColor fg = mapColor(vdefault_fg, state);
-    QColor bg = mapColor(vdefault_bg, state);
-
-    if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
-        fg = mapColor(cell.fg, state);
-    }
-    if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
-        bg = mapColor(cell.bg, state);
-    }
-    if (cell.attrs.reverse ^ selected) {
-        std::swap(fg, bg);
-    }
-
-    int cellWidth = cell.width;
-    if (cellWidth <= 0) {
-        cellWidth = 1;
-    }
-
-    QRect rect(col * m_cellSize.width(), row * m_cellSize.height(), m_cellSize.width() * cellWidth,
-               m_cellSize.height());
-    painter.fillRect(rect, bg);
-    if (cell.chars[0] != 0) {
-        painter.setPen(fg);
-        QString s;
-        for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; i++) {
-            s.append(QChar::fromUcs4(cell.chars[i]));
-        }
-        painter.drawText(rect, Qt::AlignCenter, s);
-    }
-}
 
 void KodoTerm::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
@@ -1036,41 +1000,141 @@ void KodoTerm::paintEvent(QPaintEvent *event) {
     VTermColor vdefault_fg, vdefault_bg;
     vterm_state_get_default_colors(state, &vdefault_fg, &vdefault_bg);
     QColor defaultBg = mapColor(vdefault_bg, state);
+    QColor defaultFg = mapColor(vdefault_fg, state);
 
-    painter.fillRect(rect(), defaultBg);
+    // Fill the background of the dirty rect
+    painter.fillRect(event->rect(), defaultBg);
 
     int rows, cols;
     vterm_get_size(m_vterm, &rows, &cols);
     int scrollbackLines = (int)m_scrollback.size();
     int currentScrollPos = m_scrollBar->value();
-    for (int row = 0; row < rows; ++row) {
+
+    // Calculate row range to draw based on dirty rect
+    int startRow = std::max(0, event->rect().top() / m_cellSize.height());
+    int endRow = std::min(rows - 1, event->rect().bottom() / m_cellSize.height());
+
+    for (int row = startRow; row <= endRow; ++row) {
         int absoluteRow = currentScrollPos + row;
-        if (absoluteRow < scrollbackLines) {
-            const SavedLine &line = m_scrollback[absoluteRow];
-            for (int col = 0; col < (int)line.size() && col < cols; ++col) {
-                VTermScreenCell cell;
-                const SavedCell &sc = line[col];
-                memcpy(cell.chars, sc.chars, sizeof(cell.chars));
-                cell.attrs = sc.attrs;
-                cell.fg = sc.fg;
-                cell.bg = sc.bg;
-                cell.width = sc.width;
-                drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
-                if (cell.width > 1) {
-                    col += (cell.width - 1);
-                }
+        
+        // Per-row batching state
+        int runStartCol = 0;
+        QString runText;
+        QColor runFg;
+        QColor runBg;
+        bool runInit = false;
+
+        // Lambda to flush the current run
+        auto flushRun = [&](int currentCol) {
+            if (!runInit) return;
+            
+            QRect rect(runStartCol * m_cellSize.width(), 
+                       row * m_cellSize.height(), 
+                       (currentCol - runStartCol) * m_cellSize.width(),
+                       m_cellSize.height());
+
+            // Only draw background if it differs from default (optimization)
+            if (runBg != defaultBg) {
+                painter.fillRect(rect, runBg);
             }
-        } else {
-            int vtermRow = absoluteRow - scrollbackLines;
-            for (int col = 0; col < cols; ++col) {
-                VTermScreenCell cell;
+
+            if (!runText.isEmpty()) {
+                painter.setPen(runFg);
+                // AlignCenter might look weird for batched text if font isn't perfectly mono?
+                // Actually, for a monospaced terminal, drawing a string of N chars 
+                // in a box of width N*cellWidth usually works fine.
+                // However, drawText with AlignCenter usually centers in the rect.
+                // We want left alignment within the rect for the string.
+                // But standard monospace rendering usually aligns well.
+                // Let's use AlignLeft | AlignVCenter to be safe for runs.
+                painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, runText);
+            }
+        };
+
+        for (int col = 0; col < cols; ++col) {
+            VTermScreenCell cell;
+            bool isMultiWidth = false;
+
+            // Fetch cell data
+            if (absoluteRow < scrollbackLines) {
+                const SavedLine &line = m_scrollback[absoluteRow];
+                if (col < (int)line.size()) {
+                    const SavedCell &sc = line[col];
+                    memcpy(cell.chars, sc.chars, sizeof(cell.chars));
+                    cell.attrs = sc.attrs;
+                    cell.fg = sc.fg;
+                    cell.bg = sc.bg;
+                    cell.width = sc.width;
+                } else {
+                    memset(&cell, 0, sizeof(cell));
+                    cell.width = 1;
+                }
+            } else {
+                int vtermRow = absoluteRow - scrollbackLines;
                 vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
-                drawCell(painter, row, col, cell, isSelected(absoluteRow, col));
-                if (cell.width > 1) {
-                    col += (cell.width - 1);
+            }
+
+            // Skip zero-width cells (trailing parts of multi-width chars)
+            if (cell.width == 0) continue;
+            
+            // Determine colors
+            QColor fg = defaultFg;
+            QColor bg = defaultBg;
+
+            if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
+                fg = mapColor(cell.fg, state);
+            }
+            if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
+                bg = mapColor(cell.bg, state);
+            }
+
+            bool selected = isSelected(absoluteRow, col);
+            if (cell.attrs.reverse ^ selected) {
+                std::swap(fg, bg);
+            }
+
+            // Check if we need to break the run
+            bool attrsChanged = false;
+            if (!runInit) {
+                runInit = true;
+                attrsChanged = true;
+            } else {
+                if (fg != runFg || bg != runBg) {
+                    attrsChanged = true;
                 }
             }
+
+            if (attrsChanged) {
+                flushRun(col);
+                runStartCol = col;
+                runFg = fg;
+                runBg = bg;
+                runText.clear();
+            }
+
+            // Append text
+            if (cell.chars[0] != 0) {
+                for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; i++) {
+                    runText.append(QChar::fromUcs4(cell.chars[i]));
+                }
+            } else {
+                runText.append(QChar(' ')); 
+            }
+            
+            // Handle padding for multi-width chars in the text string if necessary?
+            // Usually QPainter puts the glyph where it belongs. 
+            // If we have a wide char, vterm gives us width=2.
+            // The next cell will have width=0. We skip width=0 above.
+            // So we just add the char. 
+            // BUT: If we are batching, and we have "W " (W is wide), 
+            // the rect will be 2 cells wide. 'W' should be drawn centered/left in that 2-cell rect.
+            // Appending spaces *might* be needed if the font doesn't handle spacing automatically
+            // or if we rely on fixed advancement.
+            // However, typically monospace fonts handle wide glyphs correctly.
+            // Let's stick to appending the char.
         }
+        // Flush remaining run at end of row
+        flushRun(cols);
     }
 
     if (hasFocus() && m_cursorVisible && currentScrollPos == scrollbackLines &&
