@@ -22,3 +22,32 @@
 5. Windows 
    5.1 On closing the widget, a process is still running. This needs to be closed. [fixed]
    
+   
+Optimizations:
+  Area & Update Reductions
+   1. Damage Tracking: Uses libvterm's damage reports to only process the specific rectangle that changed, rather than scanning the whole screen.
+      [wip]
+   2. Render Throttling: (The "Timer" trick) Decouples data arrival from drawing to limit updates to ~60 FPS, preventing UI lockup.
+   3. Localized Invalidation: Updates only the small cursor rectangle during blinks instead of repainting the entire widget.
+      [wip]
+   4. Row & Column Clipping: Strictly limits inner rendering loops to the horizontal and vertical bounds of the damaged area.
+      [wip]
+
+  Drawing Logic Optimizations
+   5. Differential Rendering (Shadow Buffer): Maintains a copy of the last frame and performs a cell-by-cell comparison to skip drawing identical cells.
+   6. Backbuffer Architecture: Draws everything to an off-screen QImage, making the final paintEvent a near-instant bit-blit.
+      [wip]
+   7. Batch Rendering (Run-Length): Groups consecutive characters with the same colors into a single "run" to minimize drawText calls.
+   8. Whitespace Culling: Detects and skips the expensive drawText operation for runs of space characters on the default background.
+
+  Data & Resource Caching
+   9. Color Caching (Indexed & TrueColor): Caches resolved QColor objects (including an MRU cache for RGB colors) to eliminate thousands of allocations per second.
+      [done] - 0%
+   10. Selection Pre-calculation: Normalizes selection ranges once per frame so the inner loop uses simple integer comparisons instead of complex logic.
+
+  Qt & OS Level Tweaks
+   11. Opaque Paint Attributes: Enables Qt::WA_OpaquePaintEvent to stop the OS/Qt from wasting time erasing the widget background before we draw.
+      [wip]
+   12. Disabled Text Antialiasing: Forces raw font rendering for maximum speed, which is significantly faster than smoothed text.
+
+  I am ready for the reset. Let me know when you've reverted the code and which number you want to start with!

@@ -25,1336 +25,483 @@
 #include <QSettings>
 #include <QTextStream>
 #include <QUrl>
+#include <algorithm>
+#include <cstring>
 
 static void vterm_output_callback(const char *s, size_t len, void *user) {
     auto *pty = static_cast<PtyProcess *>(user);
-    if (pty) {
-        pty->write(QByteArray(s, (int)len));
-    }
+    if (pty) pty->write(QByteArray(s, (int)len));
 }
 
 static VTermColor toVTermColor(const QColor &c) {
-    VTermColor vc;
-    vc.type = VTERM_COLOR_RGB;
-    vc.rgb.red = c.red();
-    vc.rgb.green = c.green();
-    vc.rgb.blue = c.blue();
+    VTermColor vc; vc.type = VTERM_COLOR_RGB;
+    vc.rgb.red = c.red(); vc.rgb.green = c.green(); vc.rgb.blue = c.blue();
     return vc;
 }
 
 void KodoTerm::setConfig(const KodoTermConfig &config) {
-    m_config = config;
-    setTheme(m_config.theme); // Applies colors
-    updateTerminalSize();     // Updates font/cell size
-    update();
+    m_config = config; setTheme(m_config.theme); updateTerminalSize(); update();
 }
 
 void KodoTerm::setTheme(const TerminalTheme &theme) {
-    m_config.theme = theme;
+    m_config.theme = theme; 
     VTermState *state = vterm_obtain_state(m_vterm);
-    VTermColor fg = toVTermColor(theme.foreground);
-    VTermColor bg = toVTermColor(theme.background);
+    VTermColor fg = toVTermColor(theme.foreground), bg = toVTermColor(theme.background);
     vterm_state_set_default_colors(state, &fg, &bg);
-
-    for (int i = 0; i < 16; ++i) {
-        VTermColor c = toVTermColor(theme.palette[i]);
-        vterm_state_set_palette_color(state, i, &c);
+    for (int i = 0; i < 16; ++i) { 
+        VTermColor c = toVTermColor(theme.palette[i]); 
+        vterm_state_set_palette_color(state, i, &c); 
     }
-    update();
+    for (int i = 0; i < 256; ++i) m_paletteCacheValid[i] = false;
+    damageAll();
 }
 
 KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
+    for (int i = 0; i < 256; ++i) m_paletteCacheValid[i] = false;
+    setAttribute(Qt::WA_OpaquePaintEvent); setAttribute(Qt::WA_NoSystemBackground);
+    memset(&m_lastVTermFg, 0, sizeof(VTermColor)); memset(&m_lastVTermBg, 0, sizeof(VTermColor));
     m_config.font.setStyleHint(QFont::Monospace);
-
     setFocusPolicy(Qt::StrongFocus);
-    m_scrollBar = new QScrollBar(Qt::Vertical, this);
-    m_scrollBar->setRange(0, 0);
+    m_scrollBar = new QScrollBar(Qt::Vertical, this); m_scrollBar->setRange(0, 0);
     connect(m_scrollBar, &QScrollBar::valueChanged, this, &KodoTerm::onScrollValueChanged);
-    setMouseTracking(true);
-    updateTerminalSize(); // Calculates m_cellSize
-
-    m_cursorBlinkTimer = new QTimer(this);
-    m_cursorBlinkTimer->setInterval(500);
+    setMouseTracking(true); updateTerminalSize();
+    m_cursorBlinkTimer = new QTimer(this); m_cursorBlinkTimer->setInterval(500);
     connect(m_cursorBlinkTimer, &QTimer::timeout, this, [this]() {
         if (m_cursorBlink) {
             m_cursorBlinkState = !m_cursorBlinkState;
-            update();
+            QRect r(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(), m_cellSize.width(), m_cellSize.height());
+            update(r);
         }
     });
-
-    m_vterm = vterm_new(25, 80);
-    if (!m_vterm) {
-        return;
-    }
-    vterm_set_utf8(m_vterm, 1);
-
-    m_vtermScreen = vterm_obtain_screen(m_vterm);
-    if (!m_vtermScreen) {
-        return;
-    }
+    m_vterm = vterm_new(25, 80); if (!m_vterm) return;
+    vterm_set_utf8(m_vterm, 1); m_vtermScreen = vterm_obtain_screen(m_vterm); if (!m_vtermScreen) return;
     vterm_screen_enable_altscreen(m_vtermScreen, 1);
-
-    m_cwd = "";
-
-    static VTermScreenCallbacks callbacks = {.damage = &KodoTerm::onDamage,
-                                             .moverect = nullptr,
-                                             .movecursor = &KodoTerm::onMoveCursor,
-                                             .settermprop = &KodoTerm::onSetTermProp,
-                                             .bell = &KodoTerm::onBell,
-                                             .resize = nullptr,
-                                             .sb_pushline = &KodoTerm::onSbPushLine,
-                                             .sb_popline = &KodoTerm::onSbPopLine,
-                                             .sb_clear = nullptr,
-                                             .sb_pushline4 = nullptr};
-
-    vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this);
-    vterm_screen_reset(m_vtermScreen, 1);
-
-    if (!m_environment.contains("TERM")) {
-        m_environment.insert("TERM", "xterm-256color");
-    }
-    if (!m_environment.contains("COLORTERM")) {
-        m_environment.insert("COLORTERM", "truecolor");
-    }
-
-    setTheme(m_config.theme);
-
-    VTermState *state = vterm_obtain_state(m_vterm);
-    static VTermStateFallbacks fallbacks = {
-        .control = nullptr,
-        .csi = nullptr,
-        .osc = &KodoTerm::onOsc,
-        .dcs = nullptr,
-        .apc = nullptr,
-        .pm = nullptr,
-        .sos = nullptr,
+    static VTermScreenCallbacks callbacks = {
+        .damage = &KodoTerm::onDamage, .moverect = &KodoTerm::onMoveRect, .movecursor = &KodoTerm::onMoveCursor,
+        .settermprop = &KodoTerm::onSetTermProp, .bell = &KodoTerm::onBell, .resize = nullptr,
+        .sb_pushline = &KodoTerm::onSbPushLine, .sb_popline = &KodoTerm::onSbPopLine, .sb_clear = nullptr, .sb_pushline4 = nullptr
     };
+    vterm_screen_set_callbacks(m_vtermScreen, &callbacks, this); vterm_screen_reset(m_vtermScreen, 1);
+    if (!m_environment.contains("TERM")) m_environment.insert("TERM", "xterm-256color");
+    if (!m_environment.contains("COLORTERM")) m_environment.insert("COLORTERM", "truecolor");
+    setTheme(m_config.theme); resetDirtyRect();
+    VTermState *state = vterm_obtain_state(m_vterm);
+    static VTermStateFallbacks fallbacks = {.control = nullptr, .csi = nullptr, .osc = &KodoTerm::onOsc, .dcs = nullptr, .apc = nullptr, .pm = nullptr, .sos = nullptr};
     vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
-
-    setFocusPolicy(Qt::StrongFocus);
 }
 
-KodoTerm::~KodoTerm() {
-    if (m_pty) {
-        m_pty->kill();
-    }
-    if (m_vterm) {
-        vterm_free(m_vterm);
-    }
-}
+KodoTerm::~KodoTerm() { if (m_pty) m_pty->kill(); if (m_vterm) vterm_free(m_vterm); }
 
 bool KodoTerm::start(bool reset) {
-    if (m_pty) {
-        m_pty->kill();
-        delete m_pty;
-        m_pty = nullptr;
-    }
-
-    if (reset) {
-        resetTerminal();
-    }
-    setupPty();
-
-    if (m_program.isEmpty()) {
-        return false;
-    }
-
-    m_pty->setProgram(m_program);
-    m_pty->setArguments(m_arguments);
-    m_pty->setWorkingDirectory(m_workingDirectory);
-    m_pty->setProcessEnvironment(m_environment);
-
+    if (m_pty) { m_pty->kill(); delete m_pty; m_pty = nullptr; }
+    if (reset) resetTerminal(); setupPty(); if (m_program.isEmpty()) return false;
+    m_pty->setProgram(m_program); m_pty->setArguments(m_arguments); m_pty->setWorkingDirectory(m_workingDirectory); m_pty->setProcessEnvironment(m_environment);
     if (m_config.enableLogging) {
-        if (m_logFile.isOpen()) {
-            m_logFile.close();
-        }
-        QDir logDir(m_config.logDirectory);
-        if (!logDir.exists()) {
-            logDir.mkpath(".");
-        }
+        QDir logDir(m_config.logDirectory); if (!logDir.exists()) logDir.mkpath(".");
         QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss_zzz");
-        QString logName = QString("kodoterm_%1.log").arg(timestamp);
-        m_logFile.setFileName(logDir.filePath(logName));
+        m_logFile.setFileName(logDir.filePath(QString("kodoterm_%1.log").arg(timestamp)));
         if (m_logFile.open(QIODevice::WriteOnly)) {
-            QString header = QString("--- KodoTerm Session Log ---\n"
-                                     "Program: %1\n"
-                                     "Arguments: %2\n"
-                                     "CWD: %3\n"
-                                     "Start: %4\n"
-                                     "LOG_START_MARKER\n")
-                                 .arg(m_program)
-                                 .arg(m_arguments.join(" "))
-                                 .arg(m_workingDirectory)
-                                 .arg(timestamp);
-            m_logFile.write(header.toUtf8());
-            m_logFile.flush();
+            QString h = QString("-- KodoTerm Session Log ---\nProgram: %1\nArguments: %2\nCWD: %3\nLOG_START_MARKER\n").arg(m_program).arg(m_arguments.join(" ")).arg(m_workingDirectory);
+            m_logFile.write(h.toUtf8()); m_logFile.flush();
         }
     }
-
-    // Initial size
-    QSize size(80, 25);
-    if (!m_cellSize.isEmpty()) {
-        int rows = height() / m_cellSize.height();
-        int sbWidth = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0;
-        int cols = (width() - sbWidth) / m_cellSize.width();
-
-        size = QSize(cols, rows);
-        if (size.width() <= 0) {
-            size.setWidth(80);
-        }
-        if (size.height() <= 0) {
-            size.setHeight(25);
-        }
-    }
-
     updateTerminalSize();
-    bool success = m_pty->start(size);
-    return success;
+    int r, c; vterm_get_size(m_vterm, &r, &c);
+    return m_pty->start(QSize(c, r));
 }
 
 void KodoTerm::setupPty() {
-    if (m_pty) {
-        return;
-    }
-
-    m_pty = PtyProcess::create(this);
-    if (!m_pty) {
-        qWarning() << "Failed to create PtyProcess backend";
-        return;
-    }
+    if (m_pty) return; m_pty = PtyProcess::create(this); if (!m_pty) return;
     connect(m_pty, &PtyProcess::readyRead, this, &KodoTerm::onPtyReadyRead);
     connect(m_pty, &PtyProcess::finished, this, &KodoTerm::finished);
     vterm_output_set_callback(m_vterm, vterm_output_callback, m_pty);
 }
 
-void KodoTerm::onPtyReadyRead(const QByteArray &data) {
-    if (!data.isEmpty()) {
-        if (m_logFile.isOpen()) {
-            m_logFile.write(data);
-            m_logFile.flush();
-        }
-        vterm_input_write(m_vterm, data.constData(), data.size());
-        vterm_screen_flush_damage(m_vtermScreen);
-    }
-}
-
-void KodoTerm::onScrollValueChanged(int value) { update(); }
-
+void KodoTerm::flushTerminal() { if (m_vtermScreen) vterm_screen_flush_damage(m_vtermScreen); }
+void KodoTerm::onPtyReadyRead(const QByteArray &data) { if (!data.isEmpty()) { if (m_logFile.isOpen()) { m_logFile.write(data); m_logFile.flush(); } vterm_input_write(m_vterm, data.constData(), data.size()); flushTerminal(); } }
+void KodoTerm::onScrollValueChanged(int value) { damageAll(); }
 void KodoTerm::scrollUp(int lines) { m_scrollBar->setValue(m_scrollBar->value() - lines); }
-
 void KodoTerm::scrollDown(int lines) { m_scrollBar->setValue(m_scrollBar->value() + lines); }
-
 void KodoTerm::pageUp() { scrollUp(m_scrollBar->pageStep()); }
-
 void KodoTerm::pageDown() { scrollDown(m_scrollBar->pageStep()); }
-
-int KodoTerm::onSbPushLine(int cols, const VTermScreenCell *cells, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    return widget->pushScrollback(cols, cells);
-}
-
-int KodoTerm::onSbPopLine(int cols, VTermScreenCell *cells, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    return widget->popScrollback(cols, cells);
-}
+int KodoTerm::onSbPushLine(int cols, const VTermScreenCell *cells, void *user) { return static_cast<KodoTerm *>(user)->pushScrollback(cols, cells); }
+int KodoTerm::onSbPopLine(int cols, VTermScreenCell *cells, void *user) { return static_cast<KodoTerm *>(user)->popScrollback(cols, cells); }
 
 int KodoTerm::onOsc(int command, VTermStringFragment frag, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    if (frag.initial) {
-        widget->m_oscBuffer.clear();
-    }
-    widget->m_oscBuffer.append(frag.str, frag.len);
-    if (frag.final) {
-        if (command == 7) {
-            QString urlStr = QString::fromUtf8(widget->m_oscBuffer);
-            // Robust cleanup of trailing control/separator characters
-            while (!urlStr.isEmpty() && (urlStr.endsWith(';') || urlStr.endsWith('\a') ||
-                                         urlStr.endsWith('\r') || urlStr.endsWith('\n'))) {
-                urlStr.chop(1);
-            }
-
-            if (urlStr.startsWith("file://")) {
-                QUrl qurl(urlStr);
-                QString path = qurl.toLocalFile();
-                if (path.isEmpty() || (path.startsWith("//") && !qurl.host().isEmpty())) {
-                    path = qurl.path();
-                }
-
-                if (!path.isEmpty() && widget->m_cwd != path) {
-                    widget->m_cwd = path;
-                    emit widget->cwdChanged(path);
-                }
-            } else {
-                if (!urlStr.isEmpty() && widget->m_cwd != urlStr) {
-                    widget->m_cwd = urlStr;
-                    emit widget->cwdChanged(urlStr);
-                }
-            }
-        }
-        widget->m_oscBuffer.clear();
-    }
+    auto *w = static_cast<KodoTerm *>(user); if (frag.initial) w->m_oscBuffer.clear(); w->m_oscBuffer.append(frag.str, frag.len);
+    if (frag.final && command == 7) {
+        QString s = QString::fromUtf8(w->m_oscBuffer);
+        while (!s.isEmpty() && (s.endsWith(';') || s.endsWith('') || s.endsWith('\n') || s.endsWith(' '))) s.chop(1);
+        if (s.startsWith("file://")) { QUrl u(s); QString p = u.toLocalFile(); if (p.isEmpty() || (p.startsWith("//") && !u.host().isEmpty())) p = u.path(); if (!p.isEmpty() && w->m_cwd != p) { w->m_cwd = p; emit w->cwdChanged(p); } } 
+        else if (!s.isEmpty() && w->m_cwd != s) { w->m_cwd = s; emit w->cwdChanged(s); }
+    } 
     return 1;
 }
 
 int KodoTerm::pushScrollback(int cols, const VTermScreenCell *cells) {
-    if (m_altScreen) {
-        return 0;
-    }
-    SavedLine line;
-    line.reserve(cols);
-    for (int i = 0; i < cols; ++i) {
-        SavedCell sc;
-        memcpy(sc.chars, cells[i].chars, sizeof(sc.chars));
-        sc.attrs = cells[i].attrs;
-        sc.fg = cells[i].fg;
-        sc.bg = cells[i].bg;
-        sc.width = cells[i].width;
-        line.push_back(sc);
-    }
-    m_scrollback.push_back(std::move(line));
-
-    if ((int)m_scrollback.size() > m_config.maxScrollback) {
-        m_scrollback.pop_front();
-    }
-
-    bool atBottom = m_scrollBar->value() == m_scrollBar->maximum();
-    m_scrollBar->setRange(0, (int)m_scrollback.size());
-    if (atBottom) {
-        m_scrollBar->setValue(m_scrollBar->maximum());
-    }
-
+    if (m_altScreen) return 0;
+    SavedLine line; line.reserve(cols);
+    for (int i = 0; i < cols; ++i) { SavedCell sc; memcpy(sc.chars, cells[i].chars, sizeof(sc.chars)); sc.attrs = cells[i].attrs; sc.fg = cells[i].fg; sc.bg = cells[i].bg; sc.width = cells[i].width; line.push_back(sc); }
+    m_scrollback.push_back(std::move(line)); if ((int)m_scrollback.size() > m_config.maxScrollback) m_scrollback.pop_front();
+    bool bottom = m_scrollBar->value() == m_scrollBar->maximum(); m_scrollBar->setRange(0, (int)m_scrollback.size()); if (bottom) m_scrollBar->setValue(m_scrollBar->maximum());
     return 1;
 }
 
 int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
-    if (m_scrollback.empty()) {
-        return 0;
-    }
-
-    const SavedLine &line = m_scrollback.back();
-    int to_copy = std::min(cols, (int)line.size());
-    for (int i = 0; i < to_copy; ++i) {
-        memcpy(cells[i].chars, line[i].chars, sizeof(cells[i].chars));
-        cells[i].attrs = line[i].attrs;
-        cells[i].fg = line[i].fg;
-        cells[i].bg = line[i].bg;
-        cells[i].width = line[i].width;
-    }
-    for (int i = to_copy; i < cols; ++i) {
-        memset(&cells[i], 0, sizeof(VTermScreenCell));
-        cells[i].width = 1;
-    }
-
-    m_scrollback.pop_back();
-    m_scrollBar->setRange(0, (int)m_scrollback.size());
-    return 1;
+    if (m_scrollback.empty()) return 0;
+    const SavedLine &line = m_scrollback.back(); int n = std::min(cols, (int)line.size());
+    for (int i = 0; i < n; ++i) { memcpy(cells[i].chars, line[i].chars, sizeof(cells[i].chars)); cells[i].attrs = line[i].attrs; cells[i].fg = line[i].fg; cells[i].bg = line[i].bg; cells[i].width = line[i].width; }
+    for (int i = n; i < cols; ++i) { memset(&cells[i], 0, sizeof(VTermScreenCell)); cells[i].width = 1; }
+    m_scrollback.pop_back(); m_scrollBar->setRange(0, (int)m_scrollback.size()); return 1;
 }
 
 void KodoTerm::updateTerminalSize() {
-    QFontMetrics fm(m_config.font);
-    m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
-    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
-        m_cellSize = QSize(10, 20);
-    }
-
-    int rows = height() / m_cellSize.height();
-    int sbWidth = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0;
-    int cols = (width() - sbWidth) / m_cellSize.width();
-    if (rows <= 0) {
-        rows = 1;
-    }
-    if (cols <= 0) {
-        cols = 1;
-    }
-
-    int oldRows, oldCols;
-    if (m_vterm) {
-        vterm_get_size(m_vterm, &oldRows, &oldCols);
-        if (rows == oldRows && cols == oldCols) {
-            // Even if size is the same, check if we need to replay log
-            if (m_pendingLogReplay.isEmpty()) {
-                return;
-            }
-        }
-
-        bool atBottom = m_scrollBar->value() == m_scrollBar->maximum();
-        vterm_set_size(m_vterm, rows, cols);
-        vterm_screen_flush_damage(m_vtermScreen);
-        m_scrollBar->setPageStep(rows);
-        if (atBottom) {
-            m_scrollBar->setValue(m_scrollBar->maximum());
-        }
-
-        // Perform deferred log restoration if size is sane
+    QFontMetrics fm(m_config.font); m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
+    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) m_cellSize = QSize(10, 20);
+    int rows = height() / m_cellSize.height(), sb = m_scrollBar->isVisible() ? m_scrollBar->sizeHint().width() : 0, cols = (width() - sb) / m_cellSize.width();
+    if (rows <= 0) rows = 1; if (cols <= 0) cols = 1;
+    int orows, ocols; if (m_vterm) {
+        vterm_get_size(m_vterm, &orows, &ocols); if (rows == orows && cols == ocols && m_pendingLogReplay.isEmpty()) return;
+        vterm_set_size(m_vterm, rows, cols); vterm_screen_flush_damage(m_vtermScreen);
+        m_backBuffer = QImage(cols * m_cellSize.width(), rows * m_cellSize.height(), QImage::Format_RGB32);
+        VTermState *state = vterm_obtain_state(m_vterm); VTermColor dfg, dbg; vterm_state_get_default_colors(state, &dfg, &dbg);
+        m_backBuffer.fill(mapColor(dbg, state));
+        m_cellCache.assign(rows * cols, VTermScreenCell{}); for (auto &c : m_cellCache) c.chars[0] = (uint32_t)-1;
+        m_selectedCache.assign(rows * cols, false); m_scrollBar->setPageStep(rows);
+        if (m_scrollBar->value() == m_scrollBar->maximum()) m_scrollBar->setValue(m_scrollBar->maximum());
         if (!m_pendingLogReplay.isEmpty() && cols > 40) {
-            QString logPath = m_pendingLogReplay;
-            m_pendingLogReplay.clear(); // Clear first to avoid recursion
-
-            QFile oldLog(logPath);
-            if (oldLog.open(QIODevice::ReadOnly)) {
-                QByteArray data = oldLog.readAll();
-                int headerEnd = data.indexOf("LOG_START_MARKER\n");
-                if (headerEnd != -1) {
-                    data = data.mid(headerEnd + 17);
-                }
-                if (!data.isEmpty()) {
-                    onPtyReadyRead(data);
-                    onPtyReadyRead("\r\n");
-                    scrollToBottom();
-                }
-                oldLog.close();
-            }
+            QString lp = m_pendingLogReplay; m_pendingLogReplay.clear(); QFile f(lp);
+            if (f.open(QIODevice::ReadOnly)) { QByteArray d = f.readAll(); int h = d.indexOf("LOG_START_MARKER\n"); if (h != -1) d = d.mid(h + 17); if (!d.isEmpty()) { onPtyReadyRead(d); onPtyReadyRead("\r\n"); scrollToBottom(); } f.close(); }
         }
     }
-
-    if (m_pty) {
-        m_pty->resize(QSize(cols, rows));
-    }
-    update();
+    if (m_pty) m_pty->resize(QSize(cols, rows)); damageAll();
 }
 
-int KodoTerm::onDamage(VTermRect rect, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    int scrollbackLines = (int)widget->m_scrollback.size();
-    int currentScrollPos = widget->m_scrollBar->value();
+void KodoTerm::resetDirtyRect() { m_dirtyRect.start_row = 10000; m_dirtyRect.start_col = 10000; m_dirtyRect.end_row = -1; m_dirtyRect.end_col = -1; }
+void KodoTerm::damageAll() { int r, c; if (!m_vterm) return; vterm_get_size(m_vterm, &r, &c); m_dirtyRect.start_row = 0; m_dirtyRect.start_col = 0; m_dirtyRect.end_row = r; m_dirtyRect.end_col = c; m_dirty = true; update(); }
 
-    if (currentScrollPos < scrollbackLines) {
-        widget->update();
-        return 1;
-    }
-
-    int w = widget->m_cellSize.width();
-    int h = widget->m_cellSize.height();
-    widget->update(rect.start_col * w, rect.start_row * h, (rect.end_col - rect.start_col) * w,
-                   (rect.end_row - rect.start_row) * h);
-    return 1;
-}
-
-int KodoTerm::onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    widget->m_cursorRow = pos.row;
-    widget->m_cursorCol = pos.col;
-    widget->m_cursorVisible = visible;
-
-    int scrollbackLines = (int)widget->m_scrollback.size();
-    int currentScrollPos = widget->m_scrollBar->value();
-    if (currentScrollPos == scrollbackLines) {
-        widget->update();
-    }
-    return 1;
-}
-
-int KodoTerm::onSetTermProp(VTermProp prop, VTermValue *val, void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    switch (prop) {
-    case VTERM_PROP_CURSORVISIBLE:
-        widget->m_cursorVisible = val->boolean;
-        break;
-    case VTERM_PROP_CURSORBLINK:
-        widget->m_cursorBlink = val->boolean;
-        if (widget->m_cursorBlink) {
-            widget->m_cursorBlinkTimer->start();
-        } else {
-            widget->m_cursorBlinkTimer->stop();
-            widget->m_cursorBlinkState = true;
-        }
-        break;
-    case VTERM_PROP_CURSORSHAPE:
-        widget->m_cursorShape = val->number;
-        break;
-    case VTERM_PROP_ALTSCREEN:
-        widget->m_altScreen = val->boolean;
-        if (widget->m_altScreen) {
-            widget->m_scrollBar->hide();
-        } else {
-            widget->m_scrollBar->show();
-        }
-        widget->updateTerminalSize();
-        break;
-    case VTERM_PROP_TITLE:
-        widget->setWindowTitle(QString::fromUtf8(val->string.str, (int)val->string.len));
-        break;
-    case VTERM_PROP_MOUSE:
-        widget->m_mouseMode = val->number;
-        break;
-    default:
-        break;
-    }
-    widget->update();
-    return 1;
-}
-
-int KodoTerm::onBell(void *user) {
-    auto *widget = static_cast<KodoTerm *>(user);
-    if (widget->m_config.audibleBell) {
-        QApplication::beep();
-    }
-    if (widget->m_config.visualBell) {
-        widget->m_visualBellActive = true;
-        widget->update();
-        QTimer::singleShot(100, widget, [widget]() {
-            widget->m_visualBellActive = false;
-            widget->update();
-        });
-    }
-    return 1;
-}
-
-void KodoTerm::resizeEvent(QResizeEvent *event) {
-    int sbWidth = m_scrollBar->sizeHint().width();
-    m_scrollBar->setGeometry(width() - sbWidth, 0, sbWidth, height());
-    updateTerminalSize();
-    QWidget::resizeEvent(event);
-}
-
-void KodoTerm::wheelEvent(QWheelEvent *event) {
-    if (m_config.mouseWheelZoom && (event->modifiers() & Qt::ControlModifier)) {
-        if (event->angleDelta().y() > 0) {
-            zoomIn();
-        } else if (event->angleDelta().y() < 0) {
-            zoomOut();
-        }
-        return;
-    }
-
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        VTermModifier mod = VTERM_MOD_NONE;
-        if (event->modifiers() & Qt::ShiftModifier) {
-            mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
-        }
-        if (event->modifiers() & Qt::ControlModifier) {
-            mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
-        }
-        if (event->modifiers() & Qt::AltModifier) {
-            mod = (VTermModifier)(mod | VTERM_MOD_ALT);
-        }
-
-        int screenRow = event->position().toPoint().y() / m_cellSize.height();
-        int screenCol = event->position().toPoint().x() / m_cellSize.width();
-        int button = event->angleDelta().y() > 0 ? 4 : 5;
-
-        vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
-        vterm_mouse_button(m_vterm, button, true, mod);
-        vterm_screen_flush_damage(m_vtermScreen);
-        return;
-    }
-
-    m_scrollBar->event(event);
-}
-
-void KodoTerm::mousePressEvent(QMouseEvent *event) {
-    VTermModifier mod = VTERM_MOD_NONE;
-    if (event->modifiers() & Qt::ShiftModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
-    }
-    if (event->modifiers() & Qt::ControlModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
-    }
-    if (event->modifiers() & Qt::AltModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
-    }
-
-    int screenRow = event->pos().y() / m_cellSize.height();
-    int screenCol = event->pos().x() / m_cellSize.width();
-
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        int button = 0;
-        if (event->button() == Qt::LeftButton) {
-            button = 1;
-        } else if (event->button() == Qt::MiddleButton) {
-            button = 2;
-        } else if (event->button() == Qt::RightButton) {
-            button = 3;
-        }
-
-        if (button > 0) {
-            vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
-            vterm_mouse_button(m_vterm, button, true, mod);
-            vterm_screen_flush_damage(m_vtermScreen);
-            event->accept();
-            return;
-        }
-    }
-
-    if (event->button() == Qt::LeftButton) {
-        if (!m_clickTimer.isValid() ||
-            m_clickTimer.elapsed() > QApplication::doubleClickInterval() ||
-            (event->pos() - m_lastClickPos).manhattanLength() > 5) {
-            m_clickCount = 1;
-        } else {
-            m_clickCount++;
-        }
-        m_clickTimer.restart();
-        m_lastClickPos = event->pos();
-
-        VTermPos vpos = mouseToPos(event->pos());
-        if (m_clickCount == 3 && m_config.tripleClickSelectsLine) {
-            int rows, cols;
-            vterm_get_size(m_vterm, &rows, &cols);
-            m_selectionStart = {vpos.row, 0};
-            m_selectionEnd = {vpos.row, cols - 1};
-            m_selecting = false;
-            if (m_config.copyOnSelect) {
-                copyToClipboard();
-            }
-        } else if (m_clickCount == 1) {
-            m_selecting = true;
-            m_selectionStart = vpos;
-            m_selectionEnd = m_selectionStart;
-        }
-        update();
-    } else if (event->button() == Qt::MiddleButton && m_config.pasteOnMiddleClick) {
-        pasteFromClipboard();
-    }
-    event->accept();
-}
-
-void KodoTerm::mouseDoubleClickEvent(QMouseEvent *event) {
-    if (event->button() != Qt::LeftButton) {
-        return;
-    }
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        return;
-    }
-
-    m_clickCount = 2;
-    m_clickTimer.restart();
-    m_lastClickPos = event->pos();
-    m_selecting = false;
-
-    VTermPos vpos = mouseToPos(event->pos());
-    int scrollbackLines = (int)m_scrollback.size();
-    int rows, cols;
-    vterm_get_size(m_vterm, &rows, &cols);
-
-    QString lineText;
-    lineText.fill(' ', cols);
-    int clickCol = vpos.col;
-
-    if (vpos.row < scrollbackLines) {
-        const SavedLine &line = m_scrollback[vpos.row];
-        int num_cols = std::min((int)line.size(), cols);
-        for (int c = 0; c < num_cols; ++c) {
-            if (line[c].chars[0] != 0) {
-                lineText[c] = QChar(static_cast<ushort>(line[c].chars[0] & 0xFFFF));
-            }
-        }
-    } else {
-        int vtermRow = vpos.row - scrollbackLines;
-        if (vtermRow < rows) {
-            for (int c = 0; c < cols; ++c) {
-                VTermScreenCell cell;
-                vterm_screen_get_cell(m_vtermScreen, {vtermRow, c}, &cell);
-                if (cell.chars[0] != 0) {
-                    lineText[c] = QChar(static_cast<ushort>(cell.chars[0] & 0xFFFF));
-                }
-            }
-        }
-    }
-
-    QRegularExpression re(m_config.wordSelectionRegex);
-    if (re.isValid()) {
-        QRegularExpressionMatchIterator it = re.globalMatch(lineText);
-        while (it.hasNext()) {
-            QRegularExpressionMatch match = it.next();
-            if (clickCol >= match.capturedStart() && clickCol < match.capturedEnd()) {
-                m_selectionStart = {vpos.row, static_cast<int>(match.capturedStart())};
-                m_selectionEnd = {vpos.row, static_cast<int>(match.capturedEnd() - 1)};
-                if (m_config.copyOnSelect) {
-                    copyToClipboard();
-                }
-                break;
-            }
-        }
-    }
-    update();
-    event->accept();
-}
-
-void KodoTerm::mouseMoveEvent(QMouseEvent *event) {
-    VTermModifier mod = VTERM_MOD_NONE;
-    if (event->modifiers() & Qt::ShiftModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
-    }
-    if (event->modifiers() & Qt::ControlModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
-    }
-    if (event->modifiers() & Qt::AltModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
-    }
-
-    VTermPos vpos = mouseToPos(event->pos());
-    int screenRow = event->pos().y() / m_cellSize.height();
-    int screenCol = event->pos().x() / m_cellSize.width();
-
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
-        vterm_screen_flush_damage(m_vtermScreen);
-        return;
-    }
-
-    if (m_selecting) {
-        m_selectionEnd = vpos;
-        update();
-    }
-    QWidget::mouseMoveEvent(event);
-}
-
-void KodoTerm::mouseReleaseEvent(QMouseEvent *event) {
-    VTermModifier mod = VTERM_MOD_NONE;
-    if (event->modifiers() & Qt::ShiftModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
-    }
-    if (event->modifiers() & Qt::ControlModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
-    }
-    if (event->modifiers() & Qt::AltModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
-    }
-
-    int screenRow = event->pos().y() / m_cellSize.height();
-    int screenCol = event->pos().x() / m_cellSize.width();
-
-    if (m_mouseMode > 0 && !(event->modifiers() & Qt::ShiftModifier)) {
-        int button = 0;
-        if (event->button() == Qt::LeftButton) {
-            button = 1;
-        } else if (event->button() == Qt::MiddleButton) {
-            button = 2;
-        } else if (event->button() == Qt::RightButton) {
-            button = 3;
-        }
-
-        if (button > 0) {
-            vterm_mouse_move(m_vterm, screenRow, screenCol, mod);
-            vterm_mouse_button(m_vterm, button, false, mod);
-            vterm_screen_flush_damage(m_vtermScreen);
-            event->accept();
-            return;
-        }
-    }
-
-    if (event->button() == Qt::LeftButton && m_selecting) {
-        m_selecting = false;
-        m_selectionEnd = mouseToPos(event->pos());
-
-        if (m_selectionStart.row == m_selectionEnd.row &&
-            m_selectionStart.col == m_selectionEnd.col) {
-            m_selectionStart = {-1, -1};
-            m_selectionEnd = {-1, -1};
-        } else if (m_config.copyOnSelect) {
-            copyToClipboard();
-        }
-        update();
-    }
-
-    event->accept();
-}
-
-VTermPos KodoTerm::mouseToPos(const QPoint &pos) const {
-    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
-        return {0, 0};
-    }
-    int row = pos.y() / m_cellSize.height();
-    int col = pos.x() / m_cellSize.width();
-    int scrollbackLines = (int)m_scrollback.size();
-    int currentScrollPos = m_scrollBar->value();
-
-    VTermPos vpos;
-    vpos.row = currentScrollPos + row;
-    vpos.col = col;
-    return vpos;
-}
-
-bool KodoTerm::isSelected(int row, int col) const {
-    if (m_selectionStart.row == -1) {
-        return false;
-    }
-
-    VTermPos start = m_selectionStart;
-    VTermPos end = m_selectionEnd;
-    if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
-        std::swap(start, end);
-    }
-    if (row < start.row || row > end.row) {
-        return false;
-    }
-    if (row == start.row && row == end.row) {
-        return col >= start.col && col <= end.col;
-    }
-    if (row == start.row) {
-        return col >= start.col;
-    }
-    if (row == end.row) {
-        return col <= end.col;
-    }
+static bool colorsEqual(const VTermColor &a, const VTermColor &b) {
+    if (a.type != b.type) return false;
+    if (a.type == VTERM_COLOR_RGB) return a.rgb.red == b.rgb.red && a.rgb.green == b.rgb.green && a.rgb.blue == b.rgb.blue;
+    if (a.type == VTERM_COLOR_INDEXED) return a.indexed.idx == b.indexed.idx;
     return true;
 }
 
-QString KodoTerm::getTextRange(VTermPos start, VTermPos end) {
-    if (start.row > end.row || (start.row == end.row && start.col > end.col)) {
-        std::swap(start, end);
-    }
+static bool cellsEqual(const VTermScreenCell &a, const VTermScreenCell &b) {
+    if (a.width != b.width) return false;
+    if (memcmp(&a.attrs, &b.attrs, sizeof(VTermScreenCellAttrs)) != 0) return false;
+    if (!colorsEqual(a.fg, b.fg) || !colorsEqual(a.bg, b.bg)) return false;
+    for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL; ++i) { if (a.chars[i] != b.chars[i]) return false; if (a.chars[i] == 0) break; }
+    return true;
+}
 
-    QString text;
-    int scrollbackLines = (int)m_scrollback.size();
-    int rows, cols;
-    vterm_get_size(m_vterm, &rows, &cols);
-
-    for (int r = start.row; r <= end.row; ++r) {
-        int startCol = (r == start.row) ? start.col : 0;
-        int endCol = (r == end.row) ? end.col : 1000; // Arbitrary large number
-
-        if (r < scrollbackLines) {
-            const SavedLine &line = m_scrollback[r];
-            for (int c = startCol; c <= endCol && c < (int)line.size(); ++c) {
-                for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && line[c].chars[i]; ++i) {
-                    text.append(QChar::fromUcs4(line[c].chars[i]));
-                }
+void KodoTerm::renderToBackbuffer() {
+    if (m_backBuffer.isNull()) return;
+    int rows, cols; vterm_get_size(m_vterm, &rows, &cols);
+    int cur = m_scrollBar->value(), sb = (int)m_scrollback.size(); bool useCache = (cur == sb);
+    if (useCache && (m_dirtyRect.start_row > m_dirtyRect.end_row)) { m_dirty = false; return; }
+    QPainter painter(&m_backBuffer); painter.setFont(m_config.font); painter.setRenderHint(QPainter::TextAntialiasing, false);
+    VTermState *state = vterm_obtain_state(m_vterm); VTermColor dfg, dbg; vterm_state_get_default_colors(state, &dfg, &dbg);
+    QColor defBg = mapColor(dbg, state), defFg = mapColor(dfg, state);
+    VTermPos sS = m_selectionStart, sE = m_selectionEnd; bool hasS = (sS.row != -1);
+    if (hasS && (sS.row > sE.row || (sS.row == sE.row && sS.col > sE.col))) std::swap(sS, sE);
+    int sR = 0, eR = rows, sC = 0, eC = cols;
+    if (useCache) { sR = std::max(0, m_dirtyRect.start_row); eR = std::min(rows, m_dirtyRect.end_row); sC = std::max(0, m_dirtyRect.start_col); eC = std::min(cols, m_dirtyRect.end_col); }
+    for (int r = sR; r < eR; ++r) {
+        int absR = cur + r;
+        int runStartCol = sC; QString runText; QColor runFg, runBg; bool runInit = false;
+        auto flushRun = [&](int currentCol) {
+            if (!runInit) return;
+            QRect rect(runStartCol * m_cellSize.width(), r * m_cellSize.height(), (currentCol - runStartCol) * m_cellSize.width(), m_cellSize.height());
+            painter.fillRect(rect, runBg);
+            if (!runText.isEmpty()) { painter.setPen(runFg); painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, runText); }
+        };
+        for (int c = sC; c < eC; ++c) {
+            VTermScreenCell cell;
+            if (absR < sb) {
+                const SavedLine &l = m_scrollback[absR];
+                if (c < (int)l.size()) { const SavedCell &sc = l[c]; memcpy(cell.chars, sc.chars, sizeof(cell.chars)); cell.attrs = sc.attrs; cell.fg = sc.fg; cell.bg = sc.bg; cell.width = sc.width; } 
+                else { memset(&cell, 0, sizeof(cell)); cell.width = 1; }
+            } else vterm_screen_get_cell(m_vtermScreen, {r, c}, &cell);
+            if (cell.width == 0) continue;
+            bool sel = false;
+            if (hasS) { if (absR > sS.row && absR < sE.row) sel = true; else if (absR == sS.row && absR == sE.row) sel = (c >= sS.col && c <= sE.col); else if (absR == sS.row) sel = (c >= sS.col); else if (absR == sE.row) sel = (c <= sE.col); } 
+            if (useCache && sel == m_selectedCache[r * cols + c] && cellsEqual(cell, m_cellCache[r * cols + c])) { 
+                flushRun(c); runInit = false; runStartCol = c + cell.width; if (cell.width > 1) c += (cell.width - 1); continue; 
             }
-        } else {
-            int vtermRow = r - scrollbackLines;
-            if (vtermRow < rows) {
-                for (int c = startCol; c <= endCol && c < cols; ++c) {
-                    VTermScreenCell cell;
-                    vterm_screen_get_cell(m_vtermScreen, {vtermRow, c}, &cell);
-                    for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; ++i) {
-                        text.append(QChar::fromUcs4(cell.chars[i]));
-                    }
-                }
-            }
+            if (useCache) { m_cellCache[r * cols + c] = cell; m_selectedCache[r * cols + c] = sel; }
+            QColor fg = defFg, bg = defBg;
+            if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) fg = mapColor(cell.fg, state);
+            if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) bg = mapColor(cell.bg, state);
+            if (cell.attrs.reverse ^ sel) std::swap(fg, bg);
+            if (!runInit || fg != runFg || bg != runBg) { flushRun(c); runInit = true; runStartCol = c; runFg = fg; runBg = bg; runText.clear(); }
+            if (cell.chars[0] != 0) { 
+                int n_chars = 0; while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) n_chars++;
+                runText.append(QString::fromUcs4((const char32_t*)cell.chars, n_chars));
+            } else runText.append(' ');
+            if (cell.width > 1) c += (cell.width - 1);
         }
-        if (r < end.row) {
-            text.append('\n');
+        flushRun(eC);
+    }
+    resetDirtyRect(); m_dirty = false;
+}
+
+int KodoTerm::onDamage(VTermRect r, void *u) {
+    auto *w = static_cast<KodoTerm *>(u);
+    w->m_dirtyRect.start_row = std::min(w->m_dirtyRect.start_row, r.start_row); w->m_dirtyRect.start_col = std::min(w->m_dirtyRect.start_col, r.start_col);
+    w->m_dirtyRect.end_row = std::max(w->m_dirtyRect.end_row, r.end_row); w->m_dirtyRect.end_col = std::max(w->m_dirtyRect.end_col, r.end_col);
+    w->m_dirty = true; w->update(); return 1;
+}
+
+int KodoTerm::onMoveRect(VTermRect d, VTermRect s, void *u) {
+    auto *w = static_cast<KodoTerm *>(u); if (w->m_backBuffer.isNull()) return 1;
+    int cw = w->m_cellSize.width(), ch = w->m_cellSize.height();
+    QRect sR(s.start_col * cw, s.start_row * ch, (s.end_col - s.start_col) * cw, (s.end_row - s.start_row) * ch);
+    QImage copy = w->m_backBuffer.copy(sR); QPainter p(&w->m_backBuffer); p.drawImage(d.start_col * cw, d.start_row * ch, copy); p.end();
+    int cols, rows; vterm_get_size(w->m_vterm, &rows, &cols); int h = s.end_row - s.start_row;
+    if (d.start_row < s.start_row) {
+        for (int r = 0; r < h; ++r) {
+            int sr = s.start_row + r, dr = d.start_row + r;
+            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) { std::copy(w->m_cellCache.begin() + sr * cols, w->m_cellCache.begin() + sr * cols + cols, w->m_cellCache.begin() + dr * cols); std::copy(w->m_selectedCache.begin() + sr * cols, w->m_selectedCache.begin() + sr * cols + cols, w->m_selectedCache.begin() + dr * cols); }
         }
-    }
-    return text;
-}
-
-void KodoTerm::copyToClipboard() {
-    if (m_selectionStart.row == -1) {
-        return;
-    }
-    QString text = getTextRange(m_selectionStart, m_selectionEnd);
-    QApplication::clipboard()->setText(text);
-}
-
-void KodoTerm::pasteFromClipboard() {
-    QString text = QApplication::clipboard()->text();
-    if (!text.isEmpty()) {
-        m_pty->write(text.toUtf8());
-    }
-}
-
-void KodoTerm::selectAll() {
-    int rows, cols;
-    vterm_get_size(m_vterm, &rows, &cols);
-    int scrollbackLines = (int)m_scrollback.size();
-
-    m_selectionStart = {0, 0};
-    m_selectionEnd = {scrollbackLines + rows - 1, cols - 1};
-    update();
-}
-
-void KodoTerm::clearScrollback() {
-    m_scrollback.clear();
-    m_scrollBar->setRange(0, 0);
-    m_scrollBar->setValue(0);
-    update();
-}
-
-void KodoTerm::resetTerminal() {
-    vterm_screen_reset(m_vtermScreen, 1);
-    m_flowControlStopped = false;
-    clearScrollback();
-}
-
-void KodoTerm::openFileBrowser() {
-    if (!m_cwd.isEmpty()) {
-        QDir dir(m_cwd);
-        if (dir.exists()) {
-            QDesktopServices::openUrl(QUrl::fromLocalFile(dir.absolutePath()));
+    } else {
+        for (int r = h - 1; r >= 0; --r) {
+            int sr = s.start_row + r, dr = d.start_row + r;
+            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) { std::copy(w->m_cellCache.begin() + sr * cols, w->m_cellCache.begin() + sr * cols + cols, w->m_cellCache.begin() + dr * cols); std::copy(w->m_selectedCache.begin() + sr * cols, w->m_selectedCache.begin() + sr * cols + cols, w->m_selectedCache.begin() + dr * cols); }
         }
     }
+    w->m_dirty = true; w->update(); return 1;
 }
 
-void KodoTerm::kill() {
-    if (m_pty) {
-        m_pty->kill();
+int KodoTerm::onMoveCursor(VTermPos p, VTermPos op, int v, void *u) { auto *w = static_cast<KodoTerm *>(u); w->m_cursorRow = p.row; w->m_cursorCol = p.col; w->m_cursorVisible = v; w->update(); return 1; }
+
+int KodoTerm::onSetTermProp(VTermProp p, VTermValue *v, void *u) {
+    auto *w = static_cast<KodoTerm *>(u);
+    switch (p) {
+    case VTERM_PROP_CURSORVISIBLE: w->m_cursorVisible = v->boolean; break;
+    case VTERM_PROP_CURSORBLINK: w->m_cursorBlink = v->boolean; if (w->m_cursorBlink) w->m_cursorBlinkTimer->start(); else { w->m_cursorBlinkTimer->stop(); w->m_cursorBlinkState = true; } break;
+    case VTERM_PROP_CURSORSHAPE: w->m_cursorShape = v->number; break;
+    case VTERM_PROP_ALTSCREEN:
+        w->m_altScreen = v->boolean;
+        if (w->m_altScreen) w->m_scrollBar->hide(); else w->m_scrollBar->show();
+        w->updateTerminalSize(); break;
+    case VTERM_PROP_TITLE: w->setWindowTitle(QString::fromUtf8(v->string.str, (int)v->string.len)); break;
+    case VTERM_PROP_MOUSE: w->m_mouseMode = v->number; break;
+    default: break;
     }
+    w->damageAll(); return 1;
 }
 
-void KodoTerm::logData(const QByteArray &data) {
-    if (m_logFile.isOpen()) {
-        m_logFile.write(data);
-        m_logFile.flush();
-    }
+int KodoTerm::onBell(void *u) {
+    auto *w = static_cast<KodoTerm *>(u); if (w->m_config.audibleBell) QApplication::beep();
+    if (w->m_config.visualBell) { w->m_visualBellActive = true; w->update(); QTimer::singleShot(100, w, [w]() { w->m_visualBellActive = false; w->update(); }); }
+    return 1;
 }
 
-void KodoTerm::scrollToBottom() {
-    if (m_scrollBar) {
-        m_scrollBar->setValue(m_scrollBar->maximum());
+void KodoTerm::resizeEvent(QResizeEvent *e) { int sb = m_scrollBar->sizeHint().width(); m_scrollBar->setGeometry(width() - sb, 0, sb, height()); updateTerminalSize(); QWidget::resizeEvent(e); }
+
+void KodoTerm::wheelEvent(QWheelEvent *e) {
+    if (m_config.mouseWheelZoom && (e->modifiers() & Qt::ControlModifier)) { if (e->angleDelta().y() > 0) zoomIn(); else if (e->angleDelta().y() < 0) zoomOut(); return; }
+    if (m_mouseMode > 0 && !(e->modifiers() & Qt::ShiftModifier)) {
+        VTermModifier m = VTERM_MOD_NONE; if (e->modifiers() & Qt::ShiftModifier) m = (VTermModifier)(m | VTERM_MOD_SHIFT); if (e->modifiers() & Qt::ControlModifier) m = (VTermModifier)(m | VTERM_MOD_CTRL); if (e->modifiers() & Qt::AltModifier) m = (VTermModifier)(m | VTERM_MOD_ALT);
+        int r = e->position().toPoint().y() / m_cellSize.height(), c = e->position().toPoint().x() / m_cellSize.width(), b = e->angleDelta().y() > 0 ? 4 : 5;
+        vterm_mouse_move(m_vterm, r, c, m); vterm_mouse_button(m_vterm, b, true, m); vterm_screen_flush_damage(m_vtermScreen); return;
     }
+    m_scrollBar->event(e);
 }
 
-void KodoTerm::contextMenuEvent(QContextMenuEvent *event) {
-    if (m_mouseMode > 0 && !(QGuiApplication::keyboardModifiers() & Qt::ShiftModifier)) {
-        return;
+void KodoTerm::mousePressEvent(QMouseEvent *e) {
+    VTermModifier m = VTERM_MOD_NONE; if (e->modifiers() & Qt::ShiftModifier) m = (VTermModifier)(m | VTERM_MOD_SHIFT); if (e->modifiers() & Qt::ControlModifier) m = (VTermModifier)(m | VTERM_MOD_CTRL); if (e->modifiers() & Qt::AltModifier) m = (VTermModifier)(m | VTERM_MOD_ALT);
+    int r = e->pos().y() / m_cellSize.height(), c = e->pos().x() / m_cellSize.width();
+    if (m_mouseMode > 0 && !(e->modifiers() & Qt::ShiftModifier)) {
+        int b = 0; if (e->button() == Qt::LeftButton) b = 1; else if (e->button() == Qt::MiddleButton) b = 2; else if (e->button() == Qt::RightButton) b = 3;
+        if (b > 0) { vterm_mouse_move(m_vterm, r, c, m); vterm_mouse_button(m_vterm, b, true, m); vterm_screen_flush_damage(m_vtermScreen); e->accept(); return; }
     }
-    auto *menu = new QMenu(this);
-
-    auto *copyAction = menu->addAction(tr("Copy"), this, &KodoTerm::copyToClipboard);
-    copyAction->setEnabled(m_selectionStart.row != -1);
-    copyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
-
-    auto *pasteAction = menu->addAction(tr("Paste"), this, &KodoTerm::pasteFromClipboard);
-    pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
-    pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
-
-    menu->addSeparator();
-    menu->addAction(tr("Select All"), this, &KodoTerm::selectAll);
-    menu->addSeparator();
-    menu->addAction(tr("Clear Scrollback"), this, &KodoTerm::clearScrollback);
-    menu->addAction(tr("Reset"), this, &KodoTerm::resetTerminal);
-
-    menu->addSeparator();
-
-    auto *openBrowserAction = menu->addAction(tr("Open current directory in file browser"), this,
-                                              &KodoTerm::openFileBrowser);
-    openBrowserAction->setEnabled(!m_cwd.isEmpty() && QDir(m_cwd).exists());
-
-    menu->addSeparator();
-
-    menu->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn);
-    menu->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut);
-    menu->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
-    menu->addSeparator();
-    auto *themesMenu = menu->addMenu(tr("Themes"));
-
-    auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
-        setTheme(TerminalTheme::loadTheme(info.path));
-    };
-
-    populateThemeMenu(themesMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole,
-                      themeCallback);
-    populateThemeMenu(themesMenu, tr("Windows Terminal"),
-                      TerminalTheme::ThemeFormat::WindowsTerminal, themeCallback);
-    populateThemeMenu(themesMenu, tr("iTerm"), TerminalTheme::ThemeFormat::ITerm, themeCallback);
-
-    emit contextMenuRequested(menu, event->globalPos());
-    menu->exec(event->globalPos());
-    delete menu;
-}
-
-void KodoTerm::zoomIn() {
-    qreal size = m_config.font.pointSizeF();
-    if (size <= 0) {
-        size = m_config.font.pointSize();
-    }
-    m_config.font.setPointSizeF(size + 1.0);
-    updateTerminalSize();
-    update();
-}
-
-void KodoTerm::zoomOut() {
-    qreal size = m_config.font.pointSizeF();
-    if (size <= 0) {
-        size = m_config.font.pointSize();
-    }
-    if (size > 1.0) {
-        m_config.font.setPointSizeF(size - 1.0);
-        updateTerminalSize();
+    if (e->button() == Qt::LeftButton) {
+        if (!m_clickTimer.isValid() || m_clickTimer.elapsed() > QApplication::doubleClickInterval() || (e->pos() - m_lastClickPos).manhattanLength() > 5) m_clickCount = 1; else m_clickCount++;
+        m_clickTimer.restart(); m_lastClickPos = e->pos(); VTermPos vp = mouseToPos(e->pos());
+        if (m_clickCount == 3 && m_config.tripleClickSelectsLine) { int rows, cols; vterm_get_size(m_vterm, &rows, &cols); m_selectionStart = {vp.row, 0}; m_selectionEnd = {vp.row, cols - 1}; m_selecting = false; if (m_config.copyOnSelect) copyToClipboard(); damageAll(); }
+        else if (m_clickCount == 1) { m_selecting = true; m_selectionStart = vp; m_selectionEnd = m_selectionStart; damageAll(); }
         update();
+    } else if (e->button() == Qt::MiddleButton && m_config.pasteOnMiddleClick) pasteFromClipboard();
+    e->accept();
+}
+
+void KodoTerm::mouseDoubleClickEvent(QMouseEvent *e) {
+    if (e->button() != Qt::LeftButton || (m_mouseMode > 0 && !(e->modifiers() & Qt::ShiftModifier))) return;
+    m_clickCount = 2; m_clickTimer.restart(); m_lastClickPos = e->pos(); m_selecting = false;
+    VTermPos vp = mouseToPos(e->pos()); int sb = (int)m_scrollback.size(), rows, cols; vterm_get_size(m_vterm, &rows, &cols);
+    QString line; line.fill(' ', cols); int cc = vp.col;
+    if (vp.row < sb) { 
+        const SavedLine &l = m_scrollback[vp.row]; int n = std::min((int)l.size(), cols); 
+        for (int c = 0; c < n; ++c) if (l[c].chars[0] != 0) line[c] = QChar(static_cast<ushort>(l[c].chars[0] & 0xFFFF)); 
+    } else { 
+        int vr = vp.row - sb; if (vr < rows) { for (int c = 0; c < cols; ++c) { VTermScreenCell cell; vterm_screen_get_cell(m_vtermScreen, {vr, c}, &cell); if (cell.chars[0] != 0) line[c] = QChar(static_cast<ushort>(cell.chars[0] & 0xFFFF)); } } 
     }
+    QRegularExpression re(m_config.wordSelectionRegex); if (re.isValid()) {
+        QRegularExpressionMatchIterator it = re.globalMatch(line); 
+        while (it.hasNext()) { QRegularExpressionMatch m = it.next(); if (cc >= m.capturedStart() && cc < m.capturedEnd()) { m_selectionStart = {vp.row, static_cast<int>(m.capturedStart())}; m_selectionEnd = {vp.row, static_cast<int>(m.capturedEnd() - 1)}; if (m_config.copyOnSelect) copyToClipboard(); break; } }
+    }
+    damageAll(); e->accept();
 }
 
-void KodoTerm::resetZoom() {
-    m_config.font.setPointSize(10);
-    updateTerminalSize();
-    update();
+void KodoTerm::mouseMoveEvent(QMouseEvent *e) {
+    VTermModifier m = VTERM_MOD_NONE; if (e->modifiers() & Qt::ShiftModifier) m = (VTermModifier)(m | VTERM_MOD_SHIFT); if (e->modifiers() & Qt::ControlModifier) m = (VTermModifier)(m | VTERM_MOD_CTRL); if (e->modifiers() & Qt::AltModifier) m = (VTermModifier)(m | VTERM_MOD_ALT);
+    VTermPos vp = mouseToPos(e->pos()); int r = e->pos().y() / m_cellSize.height(), c = e->pos().x() / m_cellSize.width();
+    if (m_mouseMode > 0 && !(e->modifiers() & Qt::ShiftModifier)) { vterm_mouse_move(m_vterm, r, c, m); vterm_screen_flush_damage(m_vtermScreen); return; }
+    if (m_selecting) { m_selectionEnd = vp; damageAll(); }
+    QWidget::mouseMoveEvent(e);
 }
 
-QString KodoTerm::foregroundProcessName() const {
-    return m_pty ? m_pty->foregroundProcessName() : QString();
+void KodoTerm::mouseReleaseEvent(QMouseEvent *e) {
+    VTermModifier m = VTERM_MOD_NONE; if (e->modifiers() & Qt::ShiftModifier) m = (VTermModifier)(m | VTERM_MOD_SHIFT); if (e->modifiers() & Qt::ControlModifier) m = (VTermModifier)(m | VTERM_MOD_CTRL); if (e->modifiers() & Qt::AltModifier) m = (VTermModifier)(m | VTERM_MOD_ALT);
+    int r = e->pos().y() / m_cellSize.height(), c = e->pos().x() / m_cellSize.width();
+    if (m_mouseMode > 0 && !(e->modifiers() & Qt::ShiftModifier)) {
+        int b = 0; if (e->button() == Qt::LeftButton) b = 1; else if (e->button() == Qt::MiddleButton) b = 2; else if (e->button() == Qt::RightButton) b = 3;
+        if (b > 0) { vterm_mouse_move(m_vterm, r, c, m); vterm_mouse_button(m_vterm, b, false, m); vterm_screen_flush_damage(m_vtermScreen);
+            e->accept(); return;
+        }
+    }
+    if (e->button() == Qt::LeftButton && m_selecting) {
+        m_selecting = false; m_selectionEnd = mouseToPos(e->pos()); if (m_selectionStart.row == m_selectionEnd.row && m_selectionStart.col == m_selectionEnd.col) { m_selectionStart = {-1, -1}; m_selectionEnd = {-1, -1}; } else if (m_config.copyOnSelect) copyToClipboard(); damageAll();
+    }
+    e->accept();
 }
 
+VTermPos KodoTerm::mouseToPos(const QPoint &p) const {
+    if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) return {0, 0};
+    int r = p.y() / m_cellSize.height(), c = p.x() / m_cellSize.width(), sb = (int)m_scrollback.size(), cur = m_scrollBar->value();
+    VTermPos vp; vp.row = cur + r; vp.col = c; return vp;
+}
+
+bool KodoTerm::isSelected(int r, int c) const {
+    if (m_selectionStart.row == -1) return false;
+    VTermPos s = m_selectionStart, e = m_selectionEnd; if (s.row > e.row || (s.row == e.row && s.col > e.col)) std::swap(s, e);
+    if (r < s.row || r > e.row) return false; if (r == s.row && r == e.row) return c >= s.col && c <= e.col;
+    if (r == s.row) return c >= s.col; if (r == e.row) return c <= e.col; return true;
+}
+
+QString KodoTerm::getTextRange(VTermPos s, VTermPos e) {
+    if (s.row > e.row || (s.row == e.row && s.col > e.col)) std::swap(s, e);
+    QString t; int sb = (int)m_scrollback.size(), rs, cs; vterm_get_size(m_vterm, &rs, &cs);
+    for (int r = s.row; r <= e.row; ++r) {
+        int sc = (r == s.row) ? s.col : 0, ec = (r == e.row) ? e.col : 1000;
+        if (r < sb) { 
+            const SavedLine &l = m_scrollback[r]; for (int c = sc; c <= ec && c < (int)l.size(); ++c) for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && l[c].chars[i]; ++i) t.append(QChar::fromUcs4(l[c].chars[i])); 
+        } else { 
+            int vr = r - sb; if (vr < rs) { for (int c = sc; c <= ec && c < cs; ++c) { VTermScreenCell cell; vterm_screen_get_cell(m_vtermScreen, {vr, c}, &cell); for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; ++i) t.append(QChar::fromUcs4(cell.chars[i])); } } 
+        }
+        if (r < e.row) t.append('\n');
+    }
+    return t;
+}
+
+void KodoTerm::copyToClipboard() { if (m_selectionStart.row != -1) QApplication::clipboard()->setText(getTextRange(m_selectionStart, m_selectionEnd)); }
+void KodoTerm::pasteFromClipboard() { QString t = QApplication::clipboard()->text(); if (!t.isEmpty()) m_pty->write(t.toUtf8()); }
+void KodoTerm::selectAll() { int rs, cs; vterm_get_size(m_vterm, &rs, &cs); int sb = (int)m_scrollback.size(); m_selectionStart = {0, 0}; m_selectionEnd = {sb + rs - 1, cs - 1}; damageAll(); }
+void KodoTerm::clearScrollback() { m_scrollback.clear(); m_scrollBar->setRange(0, 0); m_scrollBar->setValue(0); damageAll(); }
+void KodoTerm::resetTerminal() { vterm_screen_reset(m_vtermScreen, 1); m_flowControlStopped = false; clearScrollback(); damageAll(); }
+void KodoTerm::openFileBrowser() { if (!m_cwd.isEmpty()) { QDir d(m_cwd); if (d.exists()) QDesktopServices::openUrl(QUrl::fromLocalFile(d.absolutePath())); } }
+void KodoTerm::kill() { if (m_pty) m_pty->kill(); }
+void KodoTerm::logData(const QByteArray &d) { if (m_logFile.isOpen()) { m_logFile.write(d); m_logFile.flush(); } }
+void KodoTerm::scrollToBottom() { if (m_scrollBar) m_scrollBar->setValue(m_scrollBar->maximum()); }
+
+void KodoTerm::contextMenuEvent(QContextMenuEvent *e) {
+    if (m_mouseMode > 0 && !(QGuiApplication::keyboardModifiers() & Qt::ShiftModifier)) return;
+    auto *m = new QMenu(this); auto *cA = m->addAction(tr("Copy"), this, &KodoTerm::copyToClipboard); cA->setEnabled(m_selectionStart.row != -1); cA->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C));
+    auto *pA = m->addAction(tr("Paste"), this, &KodoTerm::pasteFromClipboard); pA->setEnabled(!QApplication::clipboard()->text().isEmpty()); pA->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V));
+    m->addSeparator(); m->addAction(tr("Select All"), this, &KodoTerm::selectAll); m->addSeparator(); m->addAction(tr("Clear Scrollback"), this, &KodoTerm::clearScrollback); m->addAction(tr("Reset"), this, &KodoTerm::resetTerminal);
+    m->addSeparator(); auto *oB = m->addAction(tr("Open current directory in file browser"), this, &KodoTerm::openFileBrowser); oB->setEnabled(!m_cwd.isEmpty() && QDir(m_cwd).exists());
+    m->addSeparator(); m->addAction(tr("Zoom In"), this, &KodoTerm::zoomIn); m->addAction(tr("Zoom Out"), this, &KodoTerm::zoomOut); m->addAction(tr("Reset Zoom"), this, &KodoTerm::resetZoom);
+    m->addSeparator(); auto *tM = m->addMenu(tr("Themes")); auto tC = [this](const TerminalTheme::ThemeInfo &i) { setTheme(TerminalTheme::loadTheme(i.path)); };
+    populateThemeMenu(tM, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole, tC); populateThemeMenu(tM, tr("Windows Terminal"), TerminalTheme::ThemeFormat::WindowsTerminal, tC); populateThemeMenu(tM, tr("iTerm"), TerminalTheme::ThemeFormat::ITerm, tC);
+    emit contextMenuRequested(m, e->globalPos()); m->exec(e->globalPos()); delete m;
+}
+
+void KodoTerm::zoomIn() { qreal s = m_config.font.pointSizeF(); if (s <= 0) s = m_config.font.pointSize(); m_config.font.setPointSizeF(s + 1.0); updateTerminalSize(); update(); }
+void KodoTerm::zoomOut() { qreal s = m_config.font.pointSizeF(); if (s <= 0) s = m_config.font.pointSize(); if (s > 1.0) { m_config.font.setPointSizeF(s - 1.0); updateTerminalSize(); update(); } }
+void KodoTerm::resetZoom() { m_config.font.setPointSize(10); updateTerminalSize(); update(); }
+QString KodoTerm::foregroundProcessName() const { return m_pty ? m_pty->foregroundProcessName() : QString(); }
 bool KodoTerm::isRoot() const { return m_pty && m_pty->isRoot(); }
 
-QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *state) const {
+QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *s) const {
     if (VTERM_COLOR_IS_RGB(&c)) {
-        return QColor(c.rgb.red, c.rgb.green, c.rgb.blue);
+        if (c.rgb.red == m_lastVTermFg.rgb.red && c.rgb.green == m_lastVTermFg.rgb.green && c.rgb.blue == m_lastVTermFg.rgb.blue) return m_lastFg;
+        if (c.rgb.red == m_lastVTermBg.rgb.red && c.rgb.green == m_lastVTermBg.rgb.green && c.rgb.blue == m_lastVTermBg.rgb.blue) return m_lastBg;
+        QColor col(c.rgb.red, c.rgb.green, c.rgb.blue); m_lastVTermBg = m_lastVTermFg; m_lastBg = m_lastFg; m_lastVTermFg = c; m_lastFg = col; return col;
     } else if (VTERM_COLOR_IS_INDEXED(&c)) {
-        VTermColor rgb = c;
-        vterm_state_convert_color_to_rgb(state, &rgb);
-        return QColor(rgb.rgb.red, rgb.rgb.green, rgb.rgb.blue);
+        uint8_t i = c.indexed.idx; if (!m_paletteCacheValid[i]) { VTermColor rgb = c; vterm_state_convert_color_to_rgb(s, &rgb); m_paletteCache[i] = QColor(rgb.rgb.red, rgb.rgb.green, rgb.rgb.blue); m_paletteCacheValid[i] = true; } 
+        return m_paletteCache[i];
     }
     return Qt::white;
 }
 
-
-void KodoTerm::paintEvent(QPaintEvent *event) {
-    QPainter painter(this);
-    painter.setFont(m_config.font);
-
-    VTermState *state = vterm_obtain_state(m_vterm);
-    VTermColor vdefault_fg, vdefault_bg;
-    vterm_state_get_default_colors(state, &vdefault_fg, &vdefault_bg);
-    QColor defaultBg = mapColor(vdefault_bg, state);
-    QColor defaultFg = mapColor(vdefault_fg, state);
-
-    // Fill the background of the dirty rect
-    painter.fillRect(event->rect(), defaultBg);
-
-    int rows, cols;
-    vterm_get_size(m_vterm, &rows, &cols);
-    int scrollbackLines = (int)m_scrollback.size();
-    int currentScrollPos = m_scrollBar->value();
-
-    // Calculate row range to draw based on dirty rect
-    int startRow = std::max(0, event->rect().top() / m_cellSize.height());
-    int endRow = std::min(rows - 1, event->rect().bottom() / m_cellSize.height());
-
-    for (int row = startRow; row <= endRow; ++row) {
-        int absoluteRow = currentScrollPos + row;
-        
-        // Per-row batching state
-        int runStartCol = 0;
-        QString runText;
-        QColor runFg;
-        QColor runBg;
-        bool runInit = false;
-
-        // Lambda to flush the current run
-        auto flushRun = [&](int currentCol) {
-            if (!runInit) return;
-            
-            QRect rect(runStartCol * m_cellSize.width(), 
-                       row * m_cellSize.height(), 
-                       (currentCol - runStartCol) * m_cellSize.width(),
-                       m_cellSize.height());
-
-            // Only draw background if it differs from default (optimization)
-            if (runBg != defaultBg) {
-                painter.fillRect(rect, runBg);
-            }
-
-            if (!runText.isEmpty()) {
-                painter.setPen(runFg);
-                // AlignCenter might look weird for batched text if font isn't perfectly mono?
-                // Actually, for a monospaced terminal, drawing a string of N chars 
-                // in a box of width N*cellWidth usually works fine.
-                // However, drawText with AlignCenter usually centers in the rect.
-                // We want left alignment within the rect for the string.
-                // But standard monospace rendering usually aligns well.
-                // Let's use AlignLeft | AlignVCenter to be safe for runs.
-                painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, runText);
-            }
-        };
-
-        for (int col = 0; col < cols; ++col) {
-            VTermScreenCell cell;
-            bool isMultiWidth = false;
-
-            // Fetch cell data
-            if (absoluteRow < scrollbackLines) {
-                const SavedLine &line = m_scrollback[absoluteRow];
-                if (col < (int)line.size()) {
-                    const SavedCell &sc = line[col];
-                    memcpy(cell.chars, sc.chars, sizeof(cell.chars));
-                    cell.attrs = sc.attrs;
-                    cell.fg = sc.fg;
-                    cell.bg = sc.bg;
-                    cell.width = sc.width;
-                } else {
-                    memset(&cell, 0, sizeof(cell));
-                    cell.width = 1;
-                }
-            } else {
-                int vtermRow = absoluteRow - scrollbackLines;
-                vterm_screen_get_cell(m_vtermScreen, {vtermRow, col}, &cell);
-            }
-
-            // Skip zero-width cells (trailing parts of multi-width chars)
-            if (cell.width == 0) continue;
-            
-            // Determine colors
-            QColor fg = defaultFg;
-            QColor bg = defaultBg;
-
-            if (!VTERM_COLOR_IS_DEFAULT_FG(&cell.fg)) {
-                fg = mapColor(cell.fg, state);
-            }
-            if (!VTERM_COLOR_IS_DEFAULT_BG(&cell.bg)) {
-                bg = mapColor(cell.bg, state);
-            }
-
-            bool selected = isSelected(absoluteRow, col);
-            if (cell.attrs.reverse ^ selected) {
-                std::swap(fg, bg);
-            }
-
-            // Check if we need to break the run
-            bool attrsChanged = false;
-            if (!runInit) {
-                runInit = true;
-                attrsChanged = true;
-            } else {
-                if (fg != runFg || bg != runBg) {
-                    attrsChanged = true;
-                }
-            }
-
-            if (attrsChanged) {
-                flushRun(col);
-                runStartCol = col;
-                runFg = fg;
-                runBg = bg;
-                runText.clear();
-            }
-
-            // Append text
-            if (cell.chars[0] != 0) {
-                for (int i = 0; i < VTERM_MAX_CHARS_PER_CELL && cell.chars[i]; i++) {
-                    runText.append(QChar::fromUcs4(cell.chars[i]));
-                }
-            } else {
-                runText.append(QChar(' ')); 
-            }
-            
-            // Handle padding for multi-width chars in the text string if necessary?
-            // Usually QPainter puts the glyph where it belongs. 
-            // If we have a wide char, vterm gives us width=2.
-            // The next cell will have width=0. We skip width=0 above.
-            // So we just add the char. 
-            // BUT: If we are batching, and we have "W " (W is wide), 
-            // the rect will be 2 cells wide. 'W' should be drawn centered/left in that 2-cell rect.
-            // Appending spaces *might* be needed if the font doesn't handle spacing automatically
-            // or if we rely on fixed advancement.
-            // However, typically monospace fonts handle wide glyphs correctly.
-            // Let's stick to appending the char.
-        }
-        // Flush remaining run at end of row
-        flushRun(cols);
-    }
-
-    if (hasFocus() && m_cursorVisible && currentScrollPos == scrollbackLines &&
-        (!m_cursorBlink || m_cursorBlinkState)) {
-        QRect cursorRect(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(),
-                         m_cellSize.width(), m_cellSize.height());
-
+void KodoTerm::paintEvent(QPaintEvent *e) {
+    if (m_dirty) renderToBackbuffer(); if (m_backBuffer.isNull()) return;
+    QPainter painter(this); painter.drawImage(e->rect(), m_backBuffer, e->rect());
+    int sb = (int)m_scrollback.size(), cur = m_scrollBar->value();
+    if (hasFocus() && m_cursorVisible && cur == sb && (!m_cursorBlink || m_cursorBlinkState)) {
+        QRect r(m_cursorCol * m_cellSize.width(), m_cursorRow * m_cellSize.height(), m_cellSize.width(), m_cellSize.height());
         painter.setCompositionMode(QPainter::CompositionMode_Difference);
         switch (m_cursorShape) {
-        case 2: // Underline
-        case 3: // VTERM_PROP_CURSORSHAPE_UNDERLINE
-            painter.fillRect(cursorRect.x(), cursorRect.y() + cursorRect.height() - 2,
-                             cursorRect.width(), 2, Qt::white);
-            break;
-        case 4: // Bar
-        case 5: // VTERM_PROP_CURSORSHAPE_BAR_LEFT
-            painter.fillRect(cursorRect.x(), cursorRect.y(), 2, cursorRect.height(), Qt::white);
-            break;
-        case 1: // Block
-        default:
-            painter.fillRect(cursorRect, Qt::white);
-            break;
+        case 2: case 3: painter.fillRect(r.x(), r.y() + r.height() - 2, r.width(), 2, Qt::white); break;
+        case 4: case 5: painter.fillRect(r.x(), r.y(), 2, r.height(), Qt::white); break;
+        case 1: default: painter.fillRect(r, Qt::white); break;
         }
         painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
     }
-
-    if (m_visualBellActive) {
-        painter.setCompositionMode(QPainter::CompositionMode_Difference);
-        painter.fillRect(rect(), Qt::white);
-        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    }
-
+    if (m_visualBellActive) { painter.setCompositionMode(QPainter::CompositionMode_Difference); painter.fillRect(rect(), Qt::white); painter.setCompositionMode(QPainter::CompositionMode_SourceOver); }
     if (m_flowControlStopped) {
-        QString msg = tr("Terminal stopped (Ctrl+S). Press Ctrl+Q to resume.");
-        QFont msgFont = font();
-        msgFont.setBold(true);
-        painter.setFont(msgFont);
-        QFontMetrics fmm(msgFont);
-        QRect msgRect = fmm.boundingRect(msg).adjusted(-5, -2, 5, 2);
-        msgRect.moveCenter(QPoint(width() / 2, msgRect.height() / 2 + 10));
-
-        painter.fillRect(msgRect, Qt::yellow);
-        painter.setPen(Qt::black);
-        painter.drawText(msgRect, Qt::AlignCenter, msg);
+        QString m = tr("Terminal stopped (Ctrl+S). Press Ctrl+Q to resume.");
+        QFont f = font(); f.setBold(true); painter.setFont(f); QFontMetrics fm(f); QRect r = fm.boundingRect(m).adjusted(-5, -2, 5, 2);
+        r.moveCenter(QPoint(width() / 2, r.height() / 2 + 10)); painter.fillRect(r, Qt::yellow); painter.setPen(Qt::black); painter.drawText(r, Qt::AlignCenter, m);
     }
 }
 
-void KodoTerm::keyPressEvent(QKeyEvent *event) {
-    VTermModifier mod = VTERM_MOD_NONE;
-    if (event->modifiers() & Qt::ShiftModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_SHIFT);
-    }
-    if (event->modifiers() & Qt::ControlModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_CTRL);
-    }
-    if (event->modifiers() & Qt::AltModifier) {
-        mod = (VTermModifier)(mod | VTERM_MOD_ALT);
-    }
-
-    int key = event->key();
-    if (key >= Qt::Key_F1 && key <= Qt::Key_F12) {
-        vterm_keyboard_key(m_vterm, (VTermKey)(VTERM_KEY_FUNCTION(1 + key - Qt::Key_F1)), mod);
-    } else {
-        switch (key) {
-        case Qt::Key_Enter:
-        case Qt::Key_Return:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_ENTER, mod);
-            break;
-        case Qt::Key_Backspace:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_BACKSPACE, mod);
-            break;
-        case Qt::Key_Tab:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_TAB, mod);
-            break;
-        case Qt::Key_Escape:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_ESCAPE, mod);
-            break;
-        case Qt::Key_Up:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_UP, mod);
-            break;
-        case Qt::Key_Down:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_DOWN, mod);
-            break;
-        case Qt::Key_Left:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_LEFT, mod);
-            break;
-        case Qt::Key_Right:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_RIGHT, mod);
-            break;
-        case Qt::Key_PageUp:
-            if (event->modifiers() & Qt::ShiftModifier) {
-                pageUp();
-            } else {
-                vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEUP, mod);
-            }
-            break;
-        case Qt::Key_PageDown:
-            if (event->modifiers() & Qt::ShiftModifier) {
-                pageDown();
-            } else {
-                vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, mod);
-            }
-            break;
-        case Qt::Key_Home:
-            if (event->modifiers() & Qt::ShiftModifier) {
-                m_scrollBar->setValue(m_scrollBar->minimum());
-            } else {
-                vterm_keyboard_key(m_vterm, VTERM_KEY_HOME, mod);
-            }
-            break;
-        case Qt::Key_End:
-            if (event->modifiers() & Qt::ShiftModifier) {
-                m_scrollBar->setValue(m_scrollBar->maximum());
-            } else {
-                vterm_keyboard_key(m_vterm, VTERM_KEY_END, mod);
-            }
-            break;
-        case Qt::Key_Insert:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_INS, mod);
-            break;
-        case Qt::Key_Delete:
-            vterm_keyboard_key(m_vterm, VTERM_KEY_DEL, mod);
-            break;
+void KodoTerm::keyPressEvent(QKeyEvent *e) {
+    VTermModifier m = VTERM_MOD_NONE; if (e->modifiers() & Qt::ShiftModifier) m = (VTermModifier)(m | VTERM_MOD_SHIFT); if (e->modifiers() & Qt::ControlModifier) m = (VTermModifier)(m | VTERM_MOD_CTRL); if (e->modifiers() & Qt::AltModifier) m = (VTermModifier)(m | VTERM_MOD_ALT);
+    int k = e->key(); if (k >= Qt::Key_F1 && k <= Qt::Key_F12) vterm_keyboard_key(m_vterm, (VTermKey)(VTERM_KEY_FUNCTION(1 + k - Qt::Key_F1)), m);
+    else {
+        switch (k) {
+        case Qt::Key_Enter: case Qt::Key_Return: vterm_keyboard_key(m_vterm, VTERM_KEY_ENTER, m); break;
+        case Qt::Key_Backspace: vterm_keyboard_key(m_vterm, VTERM_KEY_BACKSPACE, m); break;
+        case Qt::Key_Tab: vterm_keyboard_key(m_vterm, VTERM_KEY_TAB, m); break;
+        case Qt::Key_Escape: vterm_keyboard_key(m_vterm, VTERM_KEY_ESCAPE, m); break;
+        case Qt::Key_Up: vterm_keyboard_key(m_vterm, VTERM_KEY_UP, m); break;
+        case Qt::Key_Down: vterm_keyboard_key(m_vterm, VTERM_KEY_DOWN, m); break;
+        case Qt::Key_Left: vterm_keyboard_key(m_vterm, VTERM_KEY_LEFT, m); break;
+        case Qt::Key_Right: vterm_keyboard_key(m_vterm, VTERM_KEY_RIGHT, m); break;
+        case Qt::Key_PageUp: if (e->modifiers() & Qt::ShiftModifier) pageUp(); else vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEUP, m); break;
+        case Qt::Key_PageDown: if (e->modifiers() & Qt::ShiftModifier) pageDown(); else vterm_keyboard_key(m_vterm, VTERM_KEY_PAGEDOWN, m); break;
+        case Qt::Key_Home: if (e->modifiers() & Qt::ShiftModifier) m_scrollBar->setValue(m_scrollBar->minimum()); else vterm_keyboard_key(m_vterm, VTERM_KEY_HOME, m); break;
+        case Qt::Key_End: if (e->modifiers() & Qt::ShiftModifier) m_scrollBar->setValue(m_scrollBar->maximum()); else vterm_keyboard_key(m_vterm, VTERM_KEY_END, m); break;
+        case Qt::Key_Insert: vterm_keyboard_key(m_vterm, VTERM_KEY_INS, m); break;
+        case Qt::Key_Delete: vterm_keyboard_key(m_vterm, VTERM_KEY_DEL, m); break;
         default:
-            if (event->modifiers() & Qt::ControlModifier) {
-                if (key == Qt::Key_Plus || key == Qt::Key_Equal) {
-                    zoomIn();
-                    return;
-                } else if (key == Qt::Key_Minus) {
-                    zoomOut();
-                    return;
-                } else if (key == Qt::Key_0) {
-                    resetZoom();
-                    return;
-                }
-            }
-
-            if ((event->modifiers() & Qt::ControlModifier) &&
-                (event->modifiers() & Qt::ShiftModifier)) {
-
-                if (key == Qt::Key_C) {
-                    copyToClipboard();
-                    return;
-                } else if (key == Qt::Key_V) {
-                    pasteFromClipboard();
-                    return;
-                }
-            }
-            if ((mod & VTERM_MOD_CTRL) && key >= Qt::Key_A && key <= Qt::Key_Z) {
-                if (key == Qt::Key_S) {
-                    m_flowControlStopped = true;
-                    update();
-                } else if (key == Qt::Key_Q) {
-                    m_flowControlStopped = false;
-                    update();
-                }
-                int charCode = key - Qt::Key_A + 1;
-                vterm_keyboard_unichar(m_vterm, charCode, VTERM_MOD_NONE);
-            } else if (!event->text().isEmpty()) {
-                for (const QChar &qc : event->text()) {
-                    vterm_keyboard_unichar(m_vterm, qc.unicode(), mod);
-                }
-            }
+            if (e->modifiers() & Qt::ControlModifier) { if (k == Qt::Key_Plus || k == Qt::Key_Equal) zoomIn(); else if (k == Qt::Key_Minus) zoomOut(); else if (k == Qt::Key_0) resetZoom(); return; }
+            if ((e->modifiers() & Qt::ControlModifier) && (e->modifiers() & Qt::ShiftModifier)) { if (k == Qt::Key_C) copyToClipboard(); else if (k == Qt::Key_V) pasteFromClipboard(); return; }
+            if ((m & VTERM_MOD_CTRL) && k >= Qt::Key_A && k <= Qt::Key_Z) { if (k == Qt::Key_S) { m_flowControlStopped = true; update(); } else if (k == Qt::Key_Q) { m_flowControlStopped = false; update(); } vterm_keyboard_unichar(m_vterm, k - Qt::Key_A + 1, VTERM_MOD_NONE); }
+            else if (!e->text().isEmpty()) for (const QChar &qc : e->text()) vterm_keyboard_unichar(m_vterm, qc.unicode(), m);
             break;
         }
     }
 }
 
-bool KodoTerm::focusNextPrevChild(bool next) { return false; }
+bool KodoTerm::focusNextPrevChild(bool n) { return false; }
+void KodoTerm::focusInEvent(QFocusEvent *e) { QWidget::focusInEvent(e); m_cursorBlinkState = true; m_cursorBlinkTimer->start(); }
+void KodoTerm::focusOutEvent(QFocusEvent *e) { QWidget::focusOutEvent(e); m_cursorBlinkTimer->stop(); }
 
-void KodoTerm::focusInEvent(QFocusEvent *event) {
-    QWidget::focusInEvent(event);
-    m_cursorBlinkState = true;
-    m_cursorBlinkTimer->start();
-}
-
-void KodoTerm::focusOutEvent(QFocusEvent *event) {
-    QWidget::focusOutEvent(event);
-    m_cursorBlinkTimer->stop();
-}
-
-void KodoTerm::populateThemeMenu(
-    QMenu *parentMenu, const QString &title, TerminalTheme::ThemeFormat format,
-    const std::function<void(const TerminalTheme::ThemeInfo &)> &callback) {
-    QList<TerminalTheme::ThemeInfo> themes = TerminalTheme::builtInThemes();
-    QList<TerminalTheme::ThemeInfo> filteredThemes;
-
-    for (const auto &theme : themes) {
-        if (theme.format == format) {
-            filteredThemes.append(theme);
-        }
-    }
-
-    if (filteredThemes.isEmpty()) {
-        return;
-    }
-
-    QMenu *menuToPopulate = parentMenu->addMenu(title);
-
-    auto addThemeAction = [&](QMenu *m, const TerminalTheme::ThemeInfo &info) {
-        m->addAction(info.name, [callback, info]() { callback(info); });
-    };
-
-    if (filteredThemes.size() < 26) {
-        for (const auto &info : filteredThemes) {
-            addThemeAction(menuToPopulate, info);
-        }
-    } else {
-        QMap<QString, QMenu *> subMenus;
-        for (const auto &info : filteredThemes) {
-            QChar firstLetterChar = info.name.isEmpty() ? QChar('#') : info.name[0].toUpper();
-            if (!firstLetterChar.isLetter()) {
-                firstLetterChar = QChar('#');
-            }
-
-            QString firstLetter(firstLetterChar);
-            if (!subMenus.contains(firstLetter)) {
-                subMenus[firstLetter] = menuToPopulate->addMenu(firstLetter);
-            }
-            addThemeAction(subMenus[firstLetter], info);
+void KodoTerm::populateThemeMenu(QMenu *pM, const QString &t, TerminalTheme::ThemeFormat f, const std::function<void(const TerminalTheme::ThemeInfo &)> &c) {
+    QList<TerminalTheme::ThemeInfo> ths = TerminalTheme::builtInThemes(); QList<TerminalTheme::ThemeInfo> fT; 
+    for (const auto &theme : ths) if (theme.format == f) fT.append(theme);
+    if (fT.isEmpty()) return;
+    QMenu *mT = pM->addMenu(t); auto aTA = [&](QMenu *m, const TerminalTheme::ThemeInfo &i) { m->addAction(i.name, [c, i]() { c(i); }); };
+    if (fT.size() < 26) for (const auto &i : fT) aTA(mT, i);
+    else {
+        QMap<QString, QMenu *> sM;
+        for (const auto &i : fT) {
+            QChar fLC = i.name.isEmpty() ? QChar('#') : i.name[0].toUpper(); if (!fLC.isLetter()) fLC = QChar('#');
+            QString fL(fLC); if (!sM.contains(fL)) sM[fL] = mT->addMenu(fL); aTA(sM[fL], i);
         }
     }
 }

@@ -120,6 +120,7 @@ class KodoTerm : public QWidget {
 
     // VTerm callbacks
     static int onDamage(VTermRect rect, void *user);
+    static int onMoveRect(VTermRect dest, VTermRect src, void *user);
     static int onMoveCursor(VTermPos pos, VTermPos oldpos, int visible, void *user);
     static int onSetTermProp(VTermProp prop, VTermValue *val, void *user);
     static int onBell(void *user);
@@ -177,4 +178,21 @@ class KodoTerm : public QWidget {
     KodoTermConfig m_config;
     QFile m_logFile;
     QString m_pendingLogReplay;
+
+    mutable QColor m_paletteCache[256];
+    mutable bool m_paletteCacheValid[256];
+
+    mutable VTermColor m_lastVTermFg, m_lastVTermBg;
+    mutable QColor m_lastFg, m_lastBg;
+
+    VTermRect m_dirtyRect;
+    void resetDirtyRect();
+
+    bool m_dirty = false;
+    QImage m_backBuffer;
+    std::vector<VTermScreenCell> m_cellCache;
+    std::vector<bool> m_selectedCache;
+    void renderToBackbuffer();
+    void flushTerminal();
+    void damageAll();
 };
