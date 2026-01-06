@@ -184,6 +184,7 @@ class KodoTerm : public QWidget {
 
     mutable VTermColor m_lastVTermFg, m_lastVTermBg;
     mutable QColor m_lastFg, m_lastBg;
+    double m_avgDrawTime = 0.0;
 
     VTermRect m_dirtyRect;
     void resetDirtyRect();

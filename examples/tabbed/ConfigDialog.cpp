@@ -102,6 +102,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
 
     m_copyOnSelect = new QCheckBox(tr("Copy on select"), terminalTab);
     m_pasteOnMiddleClick = new QCheckBox(tr("Paste on middle click"), terminalTab);
+    m_textAntialiasing = new QCheckBox(tr("Text Antialiasing"), terminalTab);
     m_mouseWheelZoom = new QCheckBox(tr("Mouse wheel zoom"), terminalTab);
     m_visualBell = new QCheckBox(tr("Visual Bell"), terminalTab);
     m_audibleBell = new QCheckBox(tr("Audible Bell"), terminalTab);
@@ -133,6 +134,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     termLayout->addLayout(themeLayout);
     termLayout->addWidget(m_copyOnSelect);
     termLayout->addWidget(m_pasteOnMiddleClick);
+    termLayout->addWidget(m_textAntialiasing);
     termLayout->addWidget(m_mouseWheelZoom);
     termLayout->addWidget(m_visualBell);
     termLayout->addWidget(m_audibleBell);
@@ -256,6 +258,7 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
 
     config.copyOnSelect = m_copyOnSelect->isChecked();
     config.pasteOnMiddleClick = m_pasteOnMiddleClick->isChecked();
+    config.textAntialiasing = m_textAntialiasing->isChecked();
     config.mouseWheelZoom = m_mouseWheelZoom->isChecked();
     config.visualBell = m_visualBell->isChecked();
     config.audibleBell = m_audibleBell->isChecked();
@@ -283,6 +286,7 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
 
     m_copyOnSelect->setChecked(config.copyOnSelect);
     m_pasteOnMiddleClick->setChecked(config.pasteOnMiddleClick);
+    m_textAntialiasing->setChecked(config.textAntialiasing);
     m_mouseWheelZoom->setChecked(config.mouseWheelZoom);
     m_visualBell->setChecked(config.visualBell);
     m_audibleBell->setChecked(config.audibleBell);
