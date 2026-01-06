@@ -478,8 +478,15 @@ void KodoTerm::keyPressEvent(QKeyEvent *e) {
         case Qt::Key_Insert: vterm_keyboard_key(m_vterm, VTERM_KEY_INS, m); break;
         case Qt::Key_Delete: vterm_keyboard_key(m_vterm, VTERM_KEY_DEL, m); break;
         default:
-            if (e->modifiers() & Qt::ControlModifier) { if (k == Qt::Key_Plus || k == Qt::Key_Equal) zoomIn(); else if (k == Qt::Key_Minus) zoomOut(); else if (k == Qt::Key_0) resetZoom(); return; }
-            if ((e->modifiers() & Qt::ControlModifier) && (e->modifiers() & Qt::ShiftModifier)) { if (k == Qt::Key_C) copyToClipboard(); else if (k == Qt::Key_V) pasteFromClipboard(); return; }
+            if (e->modifiers() & Qt::ControlModifier) {
+                if (k == Qt::Key_Plus || k == Qt::Key_Equal) { zoomIn(); return; }
+                else if (k == Qt::Key_Minus) { zoomOut(); return; }
+                else if (k == Qt::Key_0) { resetZoom(); return; }
+            }
+            if ((e->modifiers() & Qt::ControlModifier) && (e->modifiers() & Qt::ShiftModifier)) {
+                if (k == Qt::Key_C) { copyToClipboard(); return; }
+                else if (k == Qt::Key_V) { pasteFromClipboard(); return; }
+            }
             if ((m & VTERM_MOD_CTRL) && k >= Qt::Key_A && k <= Qt::Key_Z) { if (k == Qt::Key_S) { m_flowControlStopped = true; update(); } else if (k == Qt::Key_Q) { m_flowControlStopped = false; update(); } vterm_keyboard_unichar(m_vterm, k - Qt::Key_A + 1, VTERM_MOD_NONE); }
             else if (!e->text().isEmpty()) for (const QChar &qc : e->text()) vterm_keyboard_unichar(m_vterm, qc.unicode(), m);
             break;
