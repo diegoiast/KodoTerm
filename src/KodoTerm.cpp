@@ -471,8 +471,10 @@ void KodoTerm::renderToBackbuffer() {
         return;
     }
     QPainter painter(&m_backBuffer);
-    painter.setFont(m_config.font);
-    painter.setRenderHint(QPainter::TextAntialiasing, false);
+    QFont f = m_config.font;
+    f.setKerning(false);
+    painter.setFont(f);
+    painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor dfg, dbg;
     vterm_state_get_default_colors(state, &dfg, &dbg);
