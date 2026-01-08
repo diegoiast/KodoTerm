@@ -51,6 +51,9 @@ class KodoTerm : public QWidget {
     QProcessEnvironment processEnvironment() const { return m_environment; }
     bool start(bool reset = true);
 
+    void saveState(const QString &path);
+    void loadState(const QString &path);
+
   protected:
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
@@ -180,6 +183,7 @@ class KodoTerm : public QWidget {
     QFile m_logFile;
     QString m_pendingLogReplay;
     QFile *m_replayFile = nullptr;
+    bool m_restoring = false;
 
     mutable QColor m_paletteCache[256];
     mutable bool m_paletteCacheValid[256];

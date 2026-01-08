@@ -27,7 +27,6 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs->setDocumentMode(true);
     m_tabs->setMovable(true);
     setCentralWidget(m_tabs);
-
     setupTrayIcon();
 
     // New Tab button (Left corner)
@@ -57,20 +56,19 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
         }
     };
     updateMenu();
-    connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu); // Refresh menu on show
+    connect(shellsMenu, &QMenu::aboutToShow, this, updateMenu);
 
     newTabBtn->setMenu(shellsMenu);
     connect(newTabBtn, &QToolButton::clicked, this, [this]() { addNewTab(); });
 
     // Close Tab button (Right corner)
     QToolButton *closeTabBtn = new QToolButton(m_tabs);
-    closeTabBtn->setText(QString(QChar(0x2715))); // ✕
+    closeTabBtn->setText(QString(QChar(0x2715)));
     closeTabBtn->setAutoRaise(true);
     closeTabBtn->setToolTip(tr("Close Current Tab"));
     m_tabs->setCornerWidget(closeTabBtn, Qt::TopRightCorner);
     connect(closeTabBtn, &QToolButton::clicked, this, &TabbedTerminal::closeCurrentTab);
 
-    // Actions
     QAction *newTabAction = new QAction(tr("New Tab"), this);
     newTabAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
     newTabAction->setShortcutContext(Qt::ApplicationShortcut);
@@ -139,14 +137,13 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     colorTimer->start();
 
     m_autoSaveTimer = new QTimer(this);
-    m_autoSaveTimer->setInterval(60000); // 1 minute
+    m_autoSaveTimer->setInterval(60 * 1000);
     connect(m_autoSaveTimer, &QTimer::timeout, this, &TabbedTerminal::saveSession);
     m_autoSaveTimer->start();
 
     AppConfig::cleanupOldLogs();
 
     resize(1024, 768);
-    // Restore Session
     QTimer::singleShot(0, this, [this]() {
         QSettings s;
         restoreGeometry(s.value("Window/Geometry").toByteArray());
@@ -181,10 +178,7 @@ TabbedTerminal::~TabbedTerminal() {
 void TabbedTerminal::saveSession() {
     QSettings s;
     s.setValue("Window/Geometry", saveGeometry());
-
-    // Clear previous array to ensure no artifacts remain
     s.remove("Session/Tabs");
-
     s.beginWriteArray("Session/Tabs");
     for (int i = 0; i < m_tabs->count(); ++i) {
         KodoTerm *console = qobject_cast<KodoTerm *>(m_tabs->widget(i));
@@ -197,7 +191,7 @@ void TabbedTerminal::saveSession() {
     }
     s.endArray();
     s.setValue("Session/ActiveTab", m_tabs->currentIndex());
-    s.sync(); // Force write to disk immediately
+    s.sync();
 }
 
 void TabbedTerminal::closeEvent(QCloseEvent *event) {
@@ -215,13 +209,10 @@ void TabbedTerminal::closeEvent(QCloseEvent *event) {
 void TabbedTerminal::addNewTab(const QString &program, const QString &workingDirectory,
                                const QString &logPath) {
     KodoTerm *console = new KodoTerm(m_tabs);
-
-    // Load config
     QSettings settings;
     KodoTermConfig config;
     config.load(settings);
     console->setConfig(config);
-
     if (!program.isEmpty()) {
         console->setProgram(program);
     } else {
@@ -231,11 +222,14 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
     }
 
     // Attempt to inject shell integration for CWD tracking (Bash mostly)
+    // Problem: on git/bash this just does not work and spams the logs.
     QProcessEnvironment env = console->processEnvironment();
+#ifndef Q_OS_WIN
     QString progName = QFileInfo(console->program()).baseName();
     if (progName == "bash") {
         env.insert("PROMPT_COMMAND", "printf \"\\033]7;file://localhost%s\\033\\\\\" \"$PWD\"");
     }
+#endif
     console->setProcessEnvironment(env);
 
     if (!workingDirectory.isEmpty()) {
