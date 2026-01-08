@@ -89,6 +89,7 @@ class KodoTerm : public QWidget {
     QString logPath() const { return m_logFile.fileName(); }
     void setRestoreLog(const QString &path) { m_pendingLogReplay = path; }
     void scrollToBottom();
+    void processLogReplay();
 
     void zoomIn();
     void zoomOut();
@@ -178,6 +179,7 @@ class KodoTerm : public QWidget {
     KodoTermConfig m_config;
     QFile m_logFile;
     QString m_pendingLogReplay;
+    QFile *m_replayFile = nullptr;
 
     mutable QColor m_paletteCache[256];
     mutable bool m_paletteCacheValid[256];

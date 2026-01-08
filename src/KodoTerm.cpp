@@ -90,7 +90,10 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     vterm_state_set_unrecognised_fallbacks(state, &fallbacks, this);
 }
 
-KodoTerm::~KodoTerm() { if (m_pty) m_pty->kill(); if (m_vterm) vterm_free(m_vterm); }
+KodoTerm::~KodoTerm() {
+    if (m_replayFile) { m_replayFile->close(); delete m_replayFile; }
+    if (m_pty) m_pty->kill(); if (m_vterm) vterm_free(m_vterm);
+}
 
 bool KodoTerm::start(bool reset) {
     if (m_pty) { m_pty->kill(); delete m_pty; m_pty = nullptr; }
@@ -170,11 +173,49 @@ void KodoTerm::updateTerminalSize() {
         m_selectedCache.assign(rows * cols, false); m_scrollBar->setPageStep(rows);
         if (m_scrollBar->value() == m_scrollBar->maximum()) m_scrollBar->setValue(m_scrollBar->maximum());
         if (!m_pendingLogReplay.isEmpty() && cols > 40) {
-            QString lp = m_pendingLogReplay; m_pendingLogReplay.clear(); QFile f(lp);
-            if (f.open(QIODevice::ReadOnly)) { QByteArray d = f.readAll(); int h = d.indexOf("LOG_START_MARKER\n"); if (h != -1) d = d.mid(h + 17); if (!d.isEmpty()) { onPtyReadyRead(d); onPtyReadyRead("\r\n"); scrollToBottom(); } f.close(); }
+            QTimer::singleShot(100, this, &KodoTerm::processLogReplay);
         }
     }
     if (m_pty) m_pty->resize(QSize(cols, rows)); damageAll();
+}
+
+void KodoTerm::processLogReplay() {
+    if (m_pendingLogReplay.isEmpty() && !m_replayFile) return;
+
+    if (!m_replayFile) {
+        m_replayFile = new QFile(m_pendingLogReplay);
+        m_pendingLogReplay.clear();
+        if (!m_replayFile->open(QIODevice::ReadOnly)) {
+            delete m_replayFile; m_replayFile = nullptr;
+            return;
+        }
+        // Read header
+        QByteArray header;
+        while (!m_replayFile->atEnd()) {
+            char c;
+            if (m_replayFile->getChar(&c)) {
+                header.append(c);
+                if (c == '\n' && header.endsWith("LOG_START_MARKER\n")) {
+                    break;
+                }
+                if (header.size() > 1024) { // Header too big or invalid
+                    break; 
+                }
+            } else break;
+        }
+    }
+
+    if (m_replayFile) {
+        QByteArray chunk = m_replayFile->read(65536); // 64KB
+        if (!chunk.isEmpty()) {
+            onPtyReadyRead(chunk);
+            QTimer::singleShot(0, this, &KodoTerm::processLogReplay);
+        } else {
+            m_replayFile->close(); delete m_replayFile; m_replayFile = nullptr;
+            onPtyReadyRead("\r\n");
+            scrollToBottom();
+        }
+    }
 }
 
 void KodoTerm::resetDirtyRect() { m_dirtyRect.start_row = 10000; m_dirtyRect.start_col = 10000; m_dirtyRect.end_row = -1; m_dirtyRect.end_col = -1; }
