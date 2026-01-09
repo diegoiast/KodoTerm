@@ -458,6 +458,87 @@ static bool cellsEqual(const VTermScreenCell &a, const VTermScreenCell &b) {
     return true;
 }
 
+static bool isBoxChar(uint32_t c) {
+    return (c >= 0x2500 && c <= 0x257F);
+}
+
+static void drawBoxChar(QPainter &p, const QRect &r, uint32_t c, const QColor &fg) {
+    enum { L = 1, R = 2, U = 4, D = 8, H = 16, Db = 32 };
+    int f = 0;
+    switch (c) {
+    case 0x2500: f = L | R; break;
+    case 0x2501: f = L | R | H; break;
+    case 0x2502: f = U | D; break;
+    case 0x2503: f = U | D | H; break;
+    case 0x250C: f = D | R; break;
+    case 0x250F: f = D | R | H; break;
+    case 0x2510: f = D | L; break;
+    case 0x2513: f = D | L | H; break;
+    case 0x2514: f = U | R; break;
+    case 0x2517: f = U | R | H; break;
+    case 0x2518: f = U | L; break;
+    case 0x251B: f = U | L | H; break;
+    case 0x251C: f = U | D | R; break;
+    case 0x2523: f = U | D | R | H; break;
+    case 0x2524: f = U | D | L; break;
+    case 0x252B: f = U | D | L | H; break;
+    case 0x252C: f = D | L | R; break;
+    case 0x2533: f = D | L | R | H; break;
+    case 0x2534: f = U | L | R; break;
+    case 0x253B: f = U | L | R | H; break;
+    case 0x253C: f = U | D | L | R; break;
+    case 0x254B: f = U | D | L | R | H; break;
+    case 0x2550: f = L | R | Db; break;
+    case 0x2551: f = U | D | Db; break;
+    case 0x2554: f = D | R | Db; break;
+    case 0x2557: f = D | L | Db; break;
+    case 0x255A: f = U | R | Db; break;
+    case 0x255D: f = U | L | Db; break;
+    case 0x2560: f = U | D | R | Db; break;
+    case 0x2563: f = U | D | L | Db; break;
+    case 0x2566: f = D | L | R | Db; break;
+    case 0x2569: f = U | L | R | Db; break;
+    case 0x256C: f = U | D | L | R | Db; break;
+    }
+
+    if (f == 0) {
+        p.setPen(fg);
+        p.drawText(r, Qt::AlignCenter, QString::fromUcs4((const char32_t *)&c, 1));
+        return;
+    }
+
+    p.setPen(Qt::NoPen);
+    p.setBrush(fg);
+    int cx = r.center().x();
+    int cy = r.center().y();
+    int t = (f & H) ? 2 : 1;
+
+    if (f & Db) {
+        int g = 1; // gap
+        if (f & U) {
+            p.drawRect(cx - 1, r.top(), 1, cy - r.top() + g);
+            p.drawRect(cx + 1, r.top(), 1, cy - r.top() + g);
+        }
+        if (f & D) {
+            p.drawRect(cx - 1, cy - g, 1, r.bottom() - cy + 1 + g);
+            p.drawRect(cx + 1, cy - g, 1, r.bottom() - cy + 1 + g);
+        }
+        if (f & L) {
+            p.drawRect(r.left(), cy - 1, cx - r.left() + g, 1);
+            p.drawRect(r.left(), cy + 1, cx - r.left() + g, 1);
+        }
+        if (f & R) {
+            p.drawRect(cx - g, cy - 1, r.right() - cx + 1 + g, 1);
+            p.drawRect(cx - g, cy + 1, r.right() - cx + 1 + g, 1);
+        }
+    } else {
+        if (f & U) p.drawRect(cx, r.top(), t, cy - r.top() + t);
+        if (f & D) p.drawRect(cx, cy, t, r.bottom() - cy + 1);
+        if (f & L) p.drawRect(r.left(), cy, cx - r.left() + t, t);
+        if (f & R) p.drawRect(cx, cy, r.right() - cx + 1, t);
+    }
+}
+
 void KodoTerm::renderToBackbuffer() {
     if (m_backBuffer.isNull()) {
         return;
@@ -471,10 +552,11 @@ void KodoTerm::renderToBackbuffer() {
         return;
     }
     QPainter painter(&m_backBuffer);
-    QFont f = m_config.font;
-    f.setKerning(false);
-    painter.setFont(f);
+    QFont font = m_config.font; font.setKerning(false);
+    painter.setFont(font);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);
+
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor dfg, dbg;
     vterm_state_get_default_colors(state, &dfg, &dbg);
@@ -497,6 +579,7 @@ void KodoTerm::renderToBackbuffer() {
         QString runText;
         QColor runFg, runBg;
         bool runInit = false;
+        bool runIsBox = false;
         auto flushRun = [&](int currentCol) {
             if (!runInit) {
                 return;
@@ -566,22 +649,34 @@ void KodoTerm::renderToBackbuffer() {
             if (cell.attrs.reverse ^ sel) {
                 std::swap(fg, bg);
             }
-            if (!runInit || fg != runFg || bg != runBg) {
+
+            bool isBox = m_config.customBoxDrawing && isBoxChar(cell.chars[0]);
+
+            if (!runInit || fg != runFg || bg != runBg || isBox != runIsBox) {
                 flushRun(c);
-                runInit = true;
+                runInit = !isBox;
                 runStartCol = c;
                 runFg = fg;
                 runBg = bg;
+                runIsBox = isBox;
                 runText.clear();
             }
-            if (cell.chars[0] != 0) {
-                int n_chars = 0;
-                while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) {
-                    n_chars++;
-                }
-                runText.append(QString::fromUcs4((const char32_t *)cell.chars, n_chars));
+
+            if (isBox) {
+                QRect rect(c * m_cellSize.width(), r * m_cellSize.height(), m_cellSize.width(), m_cellSize.height());
+                painter.fillRect(rect, bg);
+                drawBoxChar(painter, rect, cell.chars[0], fg);
+                runStartCol = c + cell.width;
             } else {
-                runText.append(' ');
+                if (cell.chars[0] != 0) {
+                    int n_chars = 0;
+                    while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) {
+                        n_chars++;
+                    }
+                    runText.append(QString::fromUcs4((const char32_t *)cell.chars, n_chars));
+                } else {
+                    runText.append(' ');
+                }
             }
             if (cell.width > 1) {
                 c += (cell.width - 1);
@@ -1161,6 +1256,8 @@ QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *s) const {
 }
 
 void KodoTerm::paintEvent(QPaintEvent *e) {
+    QElapsedTimer timer; timer.start();
+
     if (m_dirty) {
         renderToBackbuffer();
     }
@@ -1218,7 +1315,19 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         painter.setPen(Qt::black);
         painter.drawText(r, Qt::AlignCenter, m);
     }
-    // Debug draw time (removed but structure remains if needed)
+
+
+    qint64 ns = timer.nsecsElapsed();
+    double ms = ns / 1000000.0;
+    m_avgDrawTime = (m_avgDrawTime == 0.0) ? ms : (m_avgDrawTime * 0.9 + ms * 0.1);
+
+/*    auto r = rect().adjusted(0, 0, -5, -5);
+    painter.setPen(Qt::red);
+    //painter.fillRect(r, Qt::yellow);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    painter.drawText(r, Qt::AlignBottom | Qt::AlignRight, QString::number(m_avgDrawTime, 'f', 2) + " ms");
+    qDebug() << "Average draw time" << QString::number(m_avgDrawTime, 'f', 2);
+*/
 }
 
 void KodoTerm::keyPressEvent(QKeyEvent *e) {
@@ -1338,6 +1447,7 @@ void KodoTerm::keyPressEvent(QKeyEvent *e) {
 }
 
 bool KodoTerm::focusNextPrevChild(bool n) { return false; }
+
 void KodoTerm::focusInEvent(QFocusEvent *e) {
     QWidget::focusInEvent(e);
     m_cursorBlinkState = true;

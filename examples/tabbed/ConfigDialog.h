@@ -47,6 +47,7 @@ class ConfigDialog : public QDialog {
     QCheckBox *m_copyOnSelect;
     QCheckBox *m_pasteOnMiddleClick;
     QCheckBox *m_textAntialiasing;
+    QCheckBox *m_customBoxDrawing;
     QCheckBox *m_mouseWheelZoom;
     QCheckBox *m_visualBell;
     QCheckBox *m_audibleBell;

@@ -43,6 +43,7 @@ class KodoTermConfig {
 
     QFont font;
     bool textAntialiasing;
+    bool customBoxDrawing;
     bool copyOnSelect;
     bool pasteOnMiddleClick;
     bool mouseWheelZoom;

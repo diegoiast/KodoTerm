@@ -319,6 +319,7 @@ void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
     font.setStyleHint(QFont::Monospace);
     textAntialiasing = false;
+    customBoxDrawing = false;
     copyOnSelect = true;
     pasteOnMiddleClick = true;
     mouseWheelZoom = true;
@@ -341,6 +342,9 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
     }
     if (json.contains("textAntialiasing")) {
         textAntialiasing = json["textAntialiasing"].toBool();
+    }
+    if (json.contains("customBoxDrawing")) {
+        customBoxDrawing = json["customBoxDrawing"].toBool();
     }
     if (json.contains("copyOnSelect")) {
         copyOnSelect = json["copyOnSelect"].toBool();
@@ -385,6 +389,7 @@ QJsonObject KodoTermConfig::saveToJson() const {
     obj["font"] = fontObj;
 
     obj["textAntialiasing"] = textAntialiasing;
+    obj["customBoxDrawing"] = customBoxDrawing;
     obj["copyOnSelect"] = copyOnSelect;
     obj["pasteOnMiddleClick"] = pasteOnMiddleClick;
     obj["mouseWheelZoom"] = mouseWheelZoom;
@@ -405,6 +410,7 @@ void KodoTermConfig::load(QSettings &settings) {
         font.setPointSizeF(settings.value("font/size", 10).toDouble());
     }
     textAntialiasing = settings.value("textAntialiasing", textAntialiasing).toBool();
+    customBoxDrawing = settings.value("customBoxDrawing", customBoxDrawing).toBool();
     copyOnSelect = settings.value("copyOnSelect", copyOnSelect).toBool();
     pasteOnMiddleClick = settings.value("pasteOnMiddleClick", pasteOnMiddleClick).toBool();
     mouseWheelZoom = settings.value("mouseWheelZoom", mouseWheelZoom).toBool();
@@ -424,6 +430,7 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("font/family", font.family());
     settings.setValue("font/size", font.pointSizeF());
     settings.setValue("textAntialiasing", textAntialiasing);
+    settings.setValue("customBoxDrawing", customBoxDrawing);
     settings.setValue("copyOnSelect", copyOnSelect);
     settings.setValue("pasteOnMiddleClick", pasteOnMiddleClick);
     settings.setValue("mouseWheelZoom", mouseWheelZoom);
