@@ -85,6 +85,13 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
     updateTerminalSize();
     m_cursorBlinkTimer = new QTimer(this);
     m_cursorBlinkTimer->setInterval(500);
+    m_restorationBannerTimer = new QTimer(this);
+    m_restorationBannerTimer->setSingleShot(true);
+    m_restorationBannerTimer->setInterval(3000);
+    connect(m_restorationBannerTimer, &QTimer::timeout, this, [this]() {
+        m_restorationBannerActive = false;
+        update();
+    });
     connect(m_cursorBlinkTimer, &QTimer::timeout, this, [this]() {
         if (m_cursorBlink) {
             m_cursorBlinkState = !m_cursorBlinkState;
@@ -361,12 +368,35 @@ void KodoTerm::processLogReplay() {
 
     if (!m_replayFile) {
         m_restoring = true;
+        m_restorationBannerActive = true;
+        m_restorationBannerText = tr("Restoring session...");
+
+        // Thorough reset
+        vterm_screen_reset(m_vtermScreen, 1);
+        m_scrollback.clear();
+        m_scrollBar->setRange(0, 0);
+        m_scrollBar->setValue(0);
+
+        VTermState *state = vterm_obtain_state(m_vterm);
+        VTermColor dfg, dbg;
+        vterm_state_get_default_colors(state, &dfg, &dbg);
+        if (!m_backBuffer.isNull()) {
+            m_backBuffer.fill(mapColor(dbg, state));
+        }
+
+        for (auto &c : m_cellCache) {
+            c.chars[0] = (uint32_t)-1;
+        }
+        m_selectedCache.assign(m_selectedCache.size(), false);
+
+        update();
         m_replayFile = new QFile(m_pendingLogReplay);
         m_pendingLogReplay.clear();
         if (!m_replayFile->open(QIODevice::ReadOnly)) {
             delete m_replayFile;
             m_replayFile = nullptr;
             m_restoring = false;
+            m_restorationBannerActive = false;
             return;
         }
         // Read header
@@ -399,6 +429,8 @@ void KodoTerm::processLogReplay() {
             onPtyReadyRead("\r\n");
             scrollToBottom();
             m_restoring = false;
+            m_restorationBannerTimer->start();
+            damageAll();
             update();
         }
     }
@@ -421,7 +453,34 @@ void KodoTerm::damageAll() {
     m_dirtyRect.end_row = r;
     m_dirtyRect.end_col = c;
     m_dirty = true;
-    update();
+    if (!m_restoring) {
+        update();
+    }
+}
+
+void KodoTerm::drawRestorationBanner(QPainter &painter) {
+    if (m_restorationBannerText.isEmpty()) {
+        return;
+    }
+
+    QFont f = font();
+    f.setBold(true);
+    f.setPointSize(f.pointSize() * 1.5);
+    painter.setFont(f);
+
+    QFontMetrics fm(f);
+    int padding = 20;
+    QRect textRect = fm.boundingRect(m_restorationBannerText);
+    QRect bannerRect(0, 0, textRect.width() + padding * 2, textRect.height() + padding);
+    bannerRect.moveCenter(rect().center());
+
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(QColor(0, 0, 0, 180));
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(bannerRect, 10, 10);
+
+    painter.setPen(Qt::white);
+    painter.drawText(bannerRect, Qt::AlignCenter, m_restorationBannerText);
 }
 
 static bool colorsEqual(const VTermColor &a, const VTermColor &b) {
@@ -458,47 +517,111 @@ static bool cellsEqual(const VTermScreenCell &a, const VTermScreenCell &b) {
     return true;
 }
 
-static bool isBoxChar(uint32_t c) {
-    return (c >= 0x2500 && c <= 0x257F);
-}
+static bool isBoxChar(uint32_t c) { return (c >= 0x2500 && c <= 0x257F); }
 
 static void drawBoxChar(QPainter &p, const QRect &r, uint32_t c, const QColor &fg) {
     enum { L = 1, R = 2, U = 4, D = 8, H = 16, Db = 32 };
     int f = 0;
     switch (c) {
-    case 0x2500: f = L | R; break;
-    case 0x2501: f = L | R | H; break;
-    case 0x2502: f = U | D; break;
-    case 0x2503: f = U | D | H; break;
-    case 0x250C: f = D | R; break;
-    case 0x250F: f = D | R | H; break;
-    case 0x2510: f = D | L; break;
-    case 0x2513: f = D | L | H; break;
-    case 0x2514: f = U | R; break;
-    case 0x2517: f = U | R | H; break;
-    case 0x2518: f = U | L; break;
-    case 0x251B: f = U | L | H; break;
-    case 0x251C: f = U | D | R; break;
-    case 0x2523: f = U | D | R | H; break;
-    case 0x2524: f = U | D | L; break;
-    case 0x252B: f = U | D | L | H; break;
-    case 0x252C: f = D | L | R; break;
-    case 0x2533: f = D | L | R | H; break;
-    case 0x2534: f = U | L | R; break;
-    case 0x253B: f = U | L | R | H; break;
-    case 0x253C: f = U | D | L | R; break;
-    case 0x254B: f = U | D | L | R | H; break;
-    case 0x2550: f = L | R | Db; break;
-    case 0x2551: f = U | D | Db; break;
-    case 0x2554: f = D | R | Db; break;
-    case 0x2557: f = D | L | Db; break;
-    case 0x255A: f = U | R | Db; break;
-    case 0x255D: f = U | L | Db; break;
-    case 0x2560: f = U | D | R | Db; break;
-    case 0x2563: f = U | D | L | Db; break;
-    case 0x2566: f = D | L | R | Db; break;
-    case 0x2569: f = U | L | R | Db; break;
-    case 0x256C: f = U | D | L | R | Db; break;
+    case 0x2500:
+        f = L | R;
+        break;
+    case 0x2501:
+        f = L | R | H;
+        break;
+    case 0x2502:
+        f = U | D;
+        break;
+    case 0x2503:
+        f = U | D | H;
+        break;
+    case 0x250C:
+        f = D | R;
+        break;
+    case 0x250F:
+        f = D | R | H;
+        break;
+    case 0x2510:
+        f = D | L;
+        break;
+    case 0x2513:
+        f = D | L | H;
+        break;
+    case 0x2514:
+        f = U | R;
+        break;
+    case 0x2517:
+        f = U | R | H;
+        break;
+    case 0x2518:
+        f = U | L;
+        break;
+    case 0x251B:
+        f = U | L | H;
+        break;
+    case 0x251C:
+        f = U | D | R;
+        break;
+    case 0x2523:
+        f = U | D | R | H;
+        break;
+    case 0x2524:
+        f = U | D | L;
+        break;
+    case 0x252B:
+        f = U | D | L | H;
+        break;
+    case 0x252C:
+        f = D | L | R;
+        break;
+    case 0x2533:
+        f = D | L | R | H;
+        break;
+    case 0x2534:
+        f = U | L | R;
+        break;
+    case 0x253B:
+        f = U | L | R | H;
+        break;
+    case 0x253C:
+        f = U | D | L | R;
+        break;
+    case 0x254B:
+        f = U | D | L | R | H;
+        break;
+    case 0x2550:
+        f = L | R | Db;
+        break;
+    case 0x2551:
+        f = U | D | Db;
+        break;
+    case 0x2554:
+        f = D | R | Db;
+        break;
+    case 0x2557:
+        f = D | L | Db;
+        break;
+    case 0x255A:
+        f = U | R | Db;
+        break;
+    case 0x255D:
+        f = U | L | Db;
+        break;
+    case 0x2560:
+        f = U | D | R | Db;
+        break;
+    case 0x2563:
+        f = U | D | L | Db;
+        break;
+    case 0x2566:
+        f = D | L | R | Db;
+        break;
+    case 0x2569:
+        f = U | L | R | Db;
+        break;
+    case 0x256C:
+        f = U | D | L | R | Db;
+        break;
     }
 
     if (f == 0) {
@@ -532,10 +655,18 @@ static void drawBoxChar(QPainter &p, const QRect &r, uint32_t c, const QColor &f
             p.drawRect(cx - g, cy + 1, r.right() - cx + 1 + g, 1);
         }
     } else {
-        if (f & U) p.drawRect(cx, r.top(), t, cy - r.top() + t);
-        if (f & D) p.drawRect(cx, cy, t, r.bottom() - cy + 1);
-        if (f & L) p.drawRect(r.left(), cy, cx - r.left() + t, t);
-        if (f & R) p.drawRect(cx, cy, r.right() - cx + 1, t);
+        if (f & U) {
+            p.drawRect(cx, r.top(), t, cy - r.top() + t);
+        }
+        if (f & D) {
+            p.drawRect(cx, cy, t, r.bottom() - cy + 1);
+        }
+        if (f & L) {
+            p.drawRect(r.left(), cy, cx - r.left() + t, t);
+        }
+        if (f & R) {
+            p.drawRect(cx, cy, r.right() - cx + 1, t);
+        }
     }
 }
 
@@ -552,7 +683,8 @@ void KodoTerm::renderToBackbuffer() {
         return;
     }
     QPainter painter(&m_backBuffer);
-    QFont font = m_config.font; font.setKerning(false);
+    QFont font = m_config.font;
+    font.setKerning(false);
     painter.setFont(font);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
     painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);
@@ -663,7 +795,8 @@ void KodoTerm::renderToBackbuffer() {
             }
 
             if (isBox) {
-                QRect rect(c * m_cellSize.width(), r * m_cellSize.height(), m_cellSize.width(), m_cellSize.height());
+                QRect rect(c * m_cellSize.width(), r * m_cellSize.height(), m_cellSize.width(),
+                           m_cellSize.height());
                 painter.fillRect(rect, bg);
                 drawBoxChar(painter, rect, cell.chars[0], fg);
                 runStartCol = c + cell.width;
@@ -690,71 +823,91 @@ void KodoTerm::renderToBackbuffer() {
 
 int KodoTerm::onDamage(VTermRect r, void *u) {
     auto *w = static_cast<KodoTerm *>(u);
+    if (!w->m_pendingLogReplay.isEmpty()) {
+        return 1;
+    }
     w->m_dirtyRect.start_row = std::min(w->m_dirtyRect.start_row, r.start_row);
     w->m_dirtyRect.start_col = std::min(w->m_dirtyRect.start_col, r.start_col);
     w->m_dirtyRect.end_row = std::max(w->m_dirtyRect.end_row, r.end_row);
     w->m_dirtyRect.end_col = std::max(w->m_dirtyRect.end_col, r.end_col);
     w->m_dirty = true;
-    w->update();
+    if (!w->m_restoring) {
+        w->update();
+    }
     return 1;
 }
 
 int KodoTerm::onMoveRect(VTermRect d, VTermRect s, void *u) {
     auto *w = static_cast<KodoTerm *>(u);
-    if (w->m_backBuffer.isNull()) {
+    if (!w->m_pendingLogReplay.isEmpty()) {
         return 1;
     }
-    int cw = w->m_cellSize.width(), ch = w->m_cellSize.height();
-    QRect sR(s.start_col * cw, s.start_row * ch, (s.end_col - s.start_col) * cw,
-             (s.end_row - s.start_row) * ch);
-    QImage copy = w->m_backBuffer.copy(sR);
-    QPainter p(&w->m_backBuffer);
-    p.drawImage(d.start_col * cw, d.start_row * ch, copy);
-    p.end();
-    int cols, rows;
-    vterm_get_size(w->m_vterm, &rows, &cols);
-    int h = s.end_row - s.start_row;
-    if (d.start_row < s.start_row) {
-        for (int r = 0; r < h; ++r) {
-            int sr = s.start_row + r, dr = d.start_row + r;
-            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
-                std::copy(w->m_cellCache.begin() + sr * cols,
-                          w->m_cellCache.begin() + sr * cols + cols,
-                          w->m_cellCache.begin() + dr * cols);
-                std::copy(w->m_selectedCache.begin() + sr * cols,
-                          w->m_selectedCache.begin() + sr * cols + cols,
-                          w->m_selectedCache.begin() + dr * cols);
+
+    if (!w->m_restoring && !w->m_backBuffer.isNull()) {
+        int cw = w->m_cellSize.width(), ch = w->m_cellSize.height();
+        QRect sR(s.start_col * cw, s.start_row * ch, (s.end_col - s.start_col) * cw,
+                 (s.end_row - s.start_row) * ch);
+        QImage copy = w->m_backBuffer.copy(sR);
+        QPainter p(&w->m_backBuffer);
+        p.drawImage(d.start_col * cw, d.start_row * ch, copy);
+        p.end();
+
+        int cols, rows;
+        vterm_get_size(w->m_vterm, &rows, &cols);
+        int h = s.end_row - s.start_row;
+        if (d.start_row < s.start_row) {
+            for (int r = 0; r < h; ++r) {
+                int sr = s.start_row + r, dr = d.start_row + r;
+                if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
+                    std::copy(w->m_cellCache.begin() + sr * cols,
+                              w->m_cellCache.begin() + sr * cols + cols,
+                              w->m_cellCache.begin() + dr * cols);
+                    std::copy(w->m_selectedCache.begin() + sr * cols,
+                              w->m_selectedCache.begin() + sr * cols + cols,
+                              w->m_selectedCache.begin() + dr * cols);
+                }
             }
-        }
-    } else {
-        for (int r = h - 1; r >= 0; --r) {
-            int sr = s.start_row + r, dr = d.start_row + r;
-            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
-                std::copy(w->m_cellCache.begin() + sr * cols,
-                          w->m_cellCache.begin() + sr * cols + cols,
-                          w->m_cellCache.begin() + dr * cols);
-                std::copy(w->m_selectedCache.begin() + sr * cols,
-                          w->m_selectedCache.begin() + sr * cols + cols,
-                          w->m_selectedCache.begin() + dr * cols);
+        } else {
+            for (int r = h - 1; r >= 0; --r) {
+                int sr = s.start_row + r, dr = d.start_row + r;
+                if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
+                    std::copy(w->m_cellCache.begin() + sr * cols,
+                              w->m_cellCache.begin() + sr * cols + cols,
+                              w->m_cellCache.begin() + dr * cols);
+                    std::copy(w->m_selectedCache.begin() + sr * cols,
+                              w->m_selectedCache.begin() + sr * cols + cols,
+                              w->m_selectedCache.begin() + dr * cols);
+                }
             }
         }
     }
+
     w->m_dirty = true;
-    w->update();
+    if (!w->m_restoring) {
+        w->update();
+    }
     return 1;
 }
 
 int KodoTerm::onMoveCursor(VTermPos p, VTermPos op, int v, void *u) {
     auto *w = static_cast<KodoTerm *>(u);
+    if (!w->m_pendingLogReplay.isEmpty()) {
+        return 1;
+    }
     w->m_cursorRow = p.row;
     w->m_cursorCol = p.col;
     w->m_cursorVisible = v;
-    w->update();
+    if (!w->m_restoring) {
+        w->update();
+    }
     return 1;
 }
 
 int KodoTerm::onSetTermProp(VTermProp p, VTermValue *v, void *u) {
     auto *w = static_cast<KodoTerm *>(u);
+    if (!w->m_pendingLogReplay.isEmpty()) {
+        return 1;
+    }
     switch (p) {
     case VTERM_PROP_CURSORVISIBLE:
         w->m_cursorVisible = v->boolean;
@@ -789,12 +942,17 @@ int KodoTerm::onSetTermProp(VTermProp p, VTermValue *v, void *u) {
     default:
         break;
     }
-    w->damageAll();
+    if (!w->m_restoring) {
+        w->damageAll();
+    }
     return 1;
 }
 
 int KodoTerm::onBell(void *u) {
     auto *w = static_cast<KodoTerm *>(u);
+    if (w->m_restoring || !w->m_pendingLogReplay.isEmpty()) {
+        return 1;
+    }
     if (w->m_config.audibleBell) {
         QApplication::beep();
     }
@@ -1256,9 +1414,10 @@ QColor KodoTerm::mapColor(const VTermColor &c, const VTermState *s) const {
 }
 
 void KodoTerm::paintEvent(QPaintEvent *e) {
-    QElapsedTimer timer; timer.start();
+    QElapsedTimer timer;
+    timer.start();
 
-    if (m_dirty) {
+    if (m_dirty && !m_restoring) {
         renderToBackbuffer();
     }
     QPainter painter(this);
@@ -1270,12 +1429,16 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         painter.fillRect(e->rect(), mapColor(dbg, state));
     }
 
-    if (m_restoring) {
-        return;
+    if (!m_restoring && !m_backBuffer.isNull()) {
+        painter.drawImage(e->rect(), m_backBuffer, e->rect());
     }
 
-    if (!m_backBuffer.isNull()) {
-        painter.drawImage(e->rect(), m_backBuffer, e->rect());
+    if (m_restorationBannerActive) {
+        drawRestorationBanner(painter);
+    }
+
+    if (m_restoring) {
+        return;
     }
     int sb = (int)m_scrollback.size(), cur = m_scrollBar->value();
     if (hasFocus() && m_cursorVisible && cur == sb && (!m_cursorBlink || m_cursorBlinkState)) {
@@ -1316,18 +1479,17 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         painter.drawText(r, Qt::AlignCenter, m);
     }
 
-
     qint64 ns = timer.nsecsElapsed();
     double ms = ns / 1000000.0;
     m_avgDrawTime = (m_avgDrawTime == 0.0) ? ms : (m_avgDrawTime * 0.9 + ms * 0.1);
 
-/*    auto r = rect().adjusted(0, 0, -5, -5);
-    painter.setPen(Qt::red);
-    //painter.fillRect(r, Qt::yellow);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    painter.drawText(r, Qt::AlignBottom | Qt::AlignRight, QString::number(m_avgDrawTime, 'f', 2) + " ms");
-    qDebug() << "Average draw time" << QString::number(m_avgDrawTime, 'f', 2);
-*/
+    /*    auto r = rect().adjusted(0, 0, -5, -5);
+        painter.setPen(Qt::red);
+        //painter.fillRect(r, Qt::yellow);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        painter.drawText(r, Qt::AlignBottom | Qt::AlignRight, QString::number(m_avgDrawTime, 'f', 2)
+       + " ms"); qDebug() << "Average draw time" << QString::number(m_avgDrawTime, 'f', 2);
+    */
 }
 
 void KodoTerm::keyPressEvent(QKeyEvent *e) {

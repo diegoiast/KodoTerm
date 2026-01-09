@@ -157,6 +157,9 @@ class KodoTerm : public QWidget {
     bool m_cursorBlinkState = true;
     bool m_altScreen = false;
     bool m_flowControlStopped = false;
+    bool m_restorationBannerActive = false;
+    QString m_restorationBannerText;
+    QTimer *m_restorationBannerTimer = nullptr;
     int m_mouseMode = 0; // VTERM_PROP_MOUSE_NONE
     QTimer *m_cursorBlinkTimer = nullptr;
 
@@ -202,4 +205,5 @@ class KodoTerm : public QWidget {
     void renderToBackbuffer();
     void flushTerminal();
     void damageAll();
+    void drawRestorationBanner(QPainter &painter);
 };
