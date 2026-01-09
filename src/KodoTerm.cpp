@@ -714,23 +714,6 @@ void KodoTerm::renderToBackbuffer() {
     }
     for (int r = sR; r < eR; ++r) {
         int absR = cur + r;
-        int runStartCol = sC;
-        QString runText;
-        QColor runFg, runBg;
-        bool runInit = false;
-        bool runIsBox = false;
-        auto flushRun = [&](int currentCol) {
-            if (!runInit) {
-                return;
-            }
-            QRect rect(runStartCol * m_cellSize.width(), r * m_cellSize.height(),
-                       (currentCol - runStartCol) * m_cellSize.width(), m_cellSize.height());
-            painter.fillRect(rect, runBg);
-            if (!runText.isEmpty()) {
-                painter.setPen(runFg);
-                painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, runText);
-            }
-        };
         for (int c = sC; c < eC; ++c) {
             VTermScreenCell cell;
             if (absR < sb) {
@@ -766,9 +749,6 @@ void KodoTerm::renderToBackbuffer() {
             }
             if (useCache && sel == m_selectedCache[r * cols + c] &&
                 cellsEqual(cell, m_cellCache[r * cols + c])) {
-                flushRun(c);
-                runInit = false;
-                runStartCol = c + cell.width;
                 if (cell.width > 1) {
                     c += (cell.width - 1);
                 }
@@ -789,40 +769,26 @@ void KodoTerm::renderToBackbuffer() {
                 std::swap(fg, bg);
             }
 
-            bool isBox = m_config.customBoxDrawing && isBoxChar(cell.chars[0]);
+            QRect rect(c * m_cellSize.width(), r * m_cellSize.height(),
+                       cell.width * m_cellSize.width(), m_cellSize.height());
+            painter.fillRect(rect, bg);
 
-            if (!runInit || fg != runFg || bg != runBg || isBox != runIsBox) {
-                flushRun(c);
-                runInit = !isBox;
-                runStartCol = c;
-                runFg = fg;
-                runBg = bg;
-                runIsBox = isBox;
-                runText.clear();
-            }
-
-            if (isBox) {
-                QRect rect(c * m_cellSize.width(), r * m_cellSize.height(), m_cellSize.width(),
-                           m_cellSize.height());
-                painter.fillRect(rect, bg);
+            if (m_config.customBoxDrawing && isBoxChar(cell.chars[0])) {
                 drawBoxChar(painter, rect, cell.chars[0], fg);
-                runStartCol = c + cell.width;
-            } else {
-                if (cell.chars[0] != 0) {
-                    int n_chars = 0;
-                    while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) {
-                        n_chars++;
-                    }
-                    runText.append(QString::fromUcs4((const char32_t *)cell.chars, n_chars));
-                } else {
-                    runText.append(' ');
+            } else if (cell.chars[0] != 0) {
+                int n_chars = 0;
+                while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) {
+                    n_chars++;
                 }
+                painter.setPen(fg);
+                painter.drawText(rect, Qt::AlignCenter,
+                                 QString::fromUcs4((const char32_t *)cell.chars, n_chars));
             }
+
             if (cell.width > 1) {
                 c += (cell.width - 1);
             }
         }
-        flushRun(eC);
     }
     resetDirtyRect();
     m_dirty = false;
