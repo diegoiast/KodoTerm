@@ -151,13 +151,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     tabs->addTab(terminalTab, tr("Terminal"));
 
     // --- Dialog Buttons ---
-    QHBoxLayout *btnLayout = new QHBoxLayout();
-    QPushButton *okBtn = new QPushButton(tr("OK"), this);
-    QPushButton *cancelBtn = new QPushButton(tr("Cancel"), this);
-    btnLayout->addStretch();
-    btnLayout->addWidget(okBtn);
-    btnLayout->addWidget(cancelBtn);
-    mainLayout->addLayout(btnLayout);
+    auto buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    mainLayout->addWidget(buttonBox);
 
     // Connections
     connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addShell);
@@ -169,8 +164,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
             m_logDirectory->setText(dir);
         }
     });
-    connect(okBtn, &QPushButton::clicked, this, &ConfigDialog::save);
-    connect(cancelBtn, &QPushButton::clicked, this, &ConfigDialog::reject);
+    connect(buttonBox, &QDialogButtonBox::accepted, this, &ConfigDialog::save);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &ConfigDialog::reject);
 
     loadSettings();
 }
@@ -197,6 +192,7 @@ void ConfigDialog::loadSettings() {
 
     KodoTermConfig config;
     config.load(s);
+    m_currentTheme = config.theme; // Store current theme
     setTerminalConfig(config);
 }
 
@@ -245,6 +241,7 @@ void ConfigDialog::save() {
 
     KodoTermConfig config = getTerminalConfig();
     config.save(s);
+    s.sync();
 
     accept();
 }
@@ -252,10 +249,12 @@ void ConfigDialog::save() {
 KodoTermConfig ConfigDialog::getTerminalConfig() const {
     KodoTermConfig config;
     config.font = m_fontCombo->currentFont();
-    config.font.setPointSize(m_fontSizeSpin->value());
+    config.font.setPointSizeF(m_fontSizeSpin->value());
 
     if (!m_selectedThemePath.isEmpty()) {
         config.theme = TerminalTheme::loadTheme(m_selectedThemePath);
+    } else {
+        config.theme = m_currentTheme; // Keep current theme if no path selected
     }
 
     config.copyOnSelect = m_copyOnSelect->isChecked();
@@ -276,15 +275,19 @@ KodoTermConfig ConfigDialog::getTerminalConfig() const {
 
 void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_fontCombo->setCurrentFont(config.font);
-    m_fontSizeSpin->setValue(config.font.pointSize());
+    m_fontSizeSpin->setValue(config.font.pointSizeF());
 
     auto themes = TerminalTheme::builtInThemes();
+    m_selectedThemePath.clear();
     for (const auto &info : themes) {
         if (info.name == config.theme.name) {
             m_selectedThemePath = info.path;
             m_themeBtn->setText(info.name);
             break;
         }
+    }
+    if (m_selectedThemePath.isEmpty()) {
+        m_themeBtn->setText(config.theme.name);
     }
 
     m_copyOnSelect->setChecked(config.copyOnSelect);

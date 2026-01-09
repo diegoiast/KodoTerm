@@ -23,8 +23,6 @@ class ConfigDialog : public QDialog {
     KodoTermConfig getTerminalConfig() const;
     void setTerminalConfig(const KodoTermConfig &config);
 
-    void applySettings();
-
   private slots:
     void addShell();
     void removeShell();
@@ -43,6 +41,7 @@ class ConfigDialog : public QDialog {
     QSpinBox *m_fontSizeSpin;
     QPushButton *m_themeBtn;
     QString m_selectedThemePath;
+    TerminalTheme m_currentTheme;
 
     QCheckBox *m_copyOnSelect;
     QCheckBox *m_pasteOnMiddleClick;

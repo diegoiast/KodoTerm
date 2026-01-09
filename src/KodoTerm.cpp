@@ -48,8 +48,10 @@ static VTermColor toVTermColor(const QColor &c) {
 void KodoTerm::setConfig(const KodoTermConfig &config) {
     m_config = config;
     setTheme(m_config.theme);
+
+    // Force a full redraw by resetting cell size and calling updateTerminalSize
+    m_cellSize = QSize(0, 0);
     updateTerminalSize();
-    update();
 }
 
 void KodoTerm::setTheme(const TerminalTheme &theme) {
@@ -63,6 +65,9 @@ void KodoTerm::setTheme(const TerminalTheme &theme) {
     }
     for (int i = 0; i < 256; ++i) {
         m_paletteCacheValid[i] = false;
+    }
+    for (auto &cell : m_cellCache) {
+        cell.chars[0] = (uint32_t)-1;
     }
     damageAll();
 }
@@ -315,6 +320,7 @@ int KodoTerm::popScrollback(int cols, VTermScreenCell *cells) {
 
 void KodoTerm::updateTerminalSize() {
     QFontMetrics fm(m_config.font);
+    QSize oldCellSize = m_cellSize;
     m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
     if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
         m_cellSize = QSize(10, 20);
@@ -331,7 +337,8 @@ void KodoTerm::updateTerminalSize() {
     int orows, ocols;
     if (m_vterm) {
         vterm_get_size(m_vterm, &orows, &ocols);
-        if (rows == orows && cols == ocols && m_pendingLogReplay.isEmpty()) {
+        if (rows == orows && cols == ocols && m_cellSize == oldCellSize &&
+            m_pendingLogReplay.isEmpty()) {
             return;
         }
         vterm_set_size(m_vterm, rows, cols);
