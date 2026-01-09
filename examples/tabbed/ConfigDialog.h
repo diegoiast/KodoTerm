@@ -13,6 +13,8 @@ class QFontComboBox;
 class QLineEdit;
 class QSpinBox;
 class QCheckBox;
+class QPushButton;
+class QLabel;
 
 class ConfigDialog : public QDialog {
     Q_OBJECT
@@ -27,6 +29,7 @@ class ConfigDialog : public QDialog {
     void addShell();
     void removeShell();
     void save();
+    void updatePreview();
 
   private:
     void loadSettings();
@@ -40,6 +43,8 @@ class ConfigDialog : public QDialog {
     QFontComboBox *m_fontCombo;
     QSpinBox *m_fontSizeSpin;
     QPushButton *m_themeBtn;
+    QLabel *m_fontPreview;
+    QLabel *m_colorBoxes[16];
     QString m_selectedThemePath;
     TerminalTheme m_currentTheme;
 

@@ -21,10 +21,11 @@
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QVBoxLayout>
+#include <QDialogButtonBox>
 
 ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle(tr("Configuration"));
-    resize(500, 400);
+    resize(600, 500);
 
     QTabWidget *tabs = new QTabWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -84,6 +85,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     auto themeCallback = [this](const TerminalTheme::ThemeInfo &info) {
         m_selectedThemePath = info.path;
         m_themeBtn->setText(info.name);
+        m_currentTheme = TerminalTheme::loadTheme(info.path);
+        updatePreview();
     };
 
     KodoTerm::populateThemeMenu(themeMenu, tr("Konsole"), TerminalTheme::ThemeFormat::Konsole,
@@ -99,6 +102,28 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
 
     themeLayout->addWidget(new QLabel(tr("Theme:")));
     themeLayout->addWidget(m_themeBtn, 1);
+
+#ifdef Q_OS_WIN
+    m_fontPreview = new QLabel(tr("C:\\> ver\nMicrosoft Windows [Version 10.0.19045.4170]"), terminalTab);
+#else
+    m_fontPreview = new QLabel(tr("user@localhost:~$ uptime\n 12:34:56 up 10 days,  1:23,  2 users,  load average: 0.05, 0.01, 0.00"), terminalTab);
+#endif
+    m_fontPreview->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+    m_fontPreview->setMinimumHeight(80);
+    m_fontPreview->setContentsMargins(5, 5, 5, 5);
+    m_fontPreview->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    m_fontPreview->setAutoFillBackground(true);
+
+    QHBoxLayout *colorLayout = new QHBoxLayout();
+    colorLayout->setSpacing(2);
+    for (int i = 0; i < 16; ++i) {
+        m_colorBoxes[i] = new QLabel(terminalTab);
+        m_colorBoxes[i]->setFixedSize(20, 20);
+        m_colorBoxes[i]->setFrameStyle(QFrame::Box | QFrame::Plain);
+        m_colorBoxes[i]->setAutoFillBackground(true);
+        colorLayout->addWidget(m_colorBoxes[i]);
+    }
+    colorLayout->addStretch();
 
     m_copyOnSelect = new QCheckBox(tr("Copy on select"), terminalTab);
     m_pasteOnMiddleClick = new QCheckBox(tr("Paste on middle click"), terminalTab);
@@ -133,6 +158,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
 
     termLayout->addLayout(fontLayout);
     termLayout->addLayout(themeLayout);
+    termLayout->addWidget(m_fontPreview);
+    termLayout->addLayout(colorLayout);
     termLayout->addWidget(m_copyOnSelect);
     termLayout->addWidget(m_pasteOnMiddleClick);
     termLayout->addWidget(m_textAntialiasing);
@@ -157,6 +184,10 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     // Connections
     connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addShell);
     connect(removeBtn, &QPushButton::clicked, this, &ConfigDialog::removeShell);
+    connect(m_fontCombo, &QFontComboBox::currentFontChanged, this, &ConfigDialog::updatePreview);
+    connect(m_fontSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ConfigDialog::updatePreview);
+    connect(m_textAntialiasing, &QCheckBox::toggled, this, &ConfigDialog::updatePreview);
+
     connect(browseLogBtn, &QPushButton::clicked, this, [this]() {
         QString dir = QFileDialog::getExistingDirectory(this, tr("Select Log Directory"),
                                                         m_logDirectory->text());
@@ -168,6 +199,24 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     connect(buttonBox, &QDialogButtonBox::rejected, this, &ConfigDialog::reject);
 
     loadSettings();
+}
+
+void ConfigDialog::updatePreview() {
+    QFont f = m_fontCombo->currentFont();
+    f.setPointSizeF(m_fontSizeSpin->value());
+    f.setStyleStrategy(m_textAntialiasing->isChecked() ? QFont::PreferAntialias : QFont::NoAntialias);
+    m_fontPreview->setFont(f);
+
+    QPalette pal = m_fontPreview->palette();
+    pal.setColor(QPalette::Window, m_currentTheme.background);
+    pal.setColor(QPalette::WindowText, m_currentTheme.foreground);
+    m_fontPreview->setPalette(pal);
+
+    for (int i = 0; i < 16; ++i) {
+        QPalette cp = m_colorBoxes[i]->palette();
+        cp.setColor(QPalette::Window, m_currentTheme.palette[i]);
+        m_colorBoxes[i]->setPalette(cp);
+    }
 }
 
 void ConfigDialog::loadSettings() {
@@ -302,4 +351,6 @@ void ConfigDialog::setTerminalConfig(const KodoTermConfig &config) {
     m_logDirectory->setText(config.logDirectory);
     m_wordSelectionRegex->setText(config.wordSelectionRegex);
     m_maxScrollback->setValue(config.maxScrollback);
+
+    updatePreview();
 }
