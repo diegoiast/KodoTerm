@@ -6,6 +6,7 @@
 #include <KodoTerm/KodoTerm.hpp>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QFontComboBox>
 #include <QHBoxLayout>
@@ -21,7 +22,6 @@
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QVBoxLayout>
-#include <QDialogButtonBox>
 
 ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle(tr("Configuration"));
@@ -104,9 +104,12 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     themeLayout->addWidget(m_themeBtn, 1);
 
 #ifdef Q_OS_WIN
-    m_fontPreview = new QLabel(tr("C:\\> ver\nMicrosoft Windows [Version 10.0.19045.4170]"), terminalTab);
+    m_fontPreview =
+        new QLabel(tr("C:\\> ver\nMicrosoft Windows [Version 10.0.19045.4170]"), terminalTab);
 #else
-    m_fontPreview = new QLabel(tr("user@localhost:~$ uptime\n 12:34:56 up 10 days,  1:23,  2 users,  load average: 0.05, 0.01, 0.00"), terminalTab);
+    m_fontPreview = new QLabel(tr("user@localhost:~$ uptime\n 12:34:56 up 10 days,  1:23,  2 "
+                                  "users,  load average: 0.05, 0.01, 0.00"),
+                               terminalTab);
 #endif
     m_fontPreview->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
     m_fontPreview->setMinimumHeight(80);
@@ -185,7 +188,8 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
     connect(addBtn, &QPushButton::clicked, this, &ConfigDialog::addShell);
     connect(removeBtn, &QPushButton::clicked, this, &ConfigDialog::removeShell);
     connect(m_fontCombo, &QFontComboBox::currentFontChanged, this, &ConfigDialog::updatePreview);
-    connect(m_fontSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &ConfigDialog::updatePreview);
+    connect(m_fontSizeSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &ConfigDialog::updatePreview);
     connect(m_textAntialiasing, &QCheckBox::toggled, this, &ConfigDialog::updatePreview);
 
     connect(browseLogBtn, &QPushButton::clicked, this, [this]() {
@@ -205,7 +209,8 @@ void ConfigDialog::updatePreview() {
     QFont f = m_fontCombo->currentFont();
     f.setPointSizeF(m_fontSizeSpin->value());
     f.setKerning(false);
-    f.setStyleStrategy(m_textAntialiasing->isChecked() ? QFont::PreferAntialias : QFont::NoAntialias);
+    f.setStyleStrategy(m_textAntialiasing->isChecked() ? QFont::PreferAntialias
+                                                       : QFont::NoAntialias);
     m_fontPreview->setFont(f);
 
     QPalette pal = m_fontPreview->palette();

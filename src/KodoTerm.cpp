@@ -344,8 +344,8 @@ void KodoTerm::updateTerminalSize() {
         vterm_set_size(m_vterm, rows, cols);
         vterm_screen_flush_damage(m_vtermScreen);
         qreal dpr = devicePixelRatioF();
-        m_backBuffer =
-            QImage(cols * m_cellSize.width() * dpr, rows * m_cellSize.height() * dpr, QImage::Format_RGB32);
+        m_backBuffer = QImage(cols * m_cellSize.width() * dpr, rows * m_cellSize.height() * dpr,
+                              QImage::Format_RGB32);
         m_backBuffer.setDevicePixelRatio(dpr);
         VTermState *state = vterm_obtain_state(m_vterm);
         VTermColor dfg, dbg;
@@ -699,7 +699,8 @@ void KodoTerm::renderToBackbuffer() {
     font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     painter.setFont(font);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
-    painter.setRenderHint(QPainter::Antialiasing, false); // Always false for cell backgrounds to prevent gaps
+    painter.setRenderHint(QPainter::Antialiasing,
+                          false); // Always false for cell backgrounds to prevent gaps
 
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor dfg, dbg;
