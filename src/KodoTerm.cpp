@@ -343,8 +343,10 @@ void KodoTerm::updateTerminalSize() {
         }
         vterm_set_size(m_vterm, rows, cols);
         vterm_screen_flush_damage(m_vtermScreen);
+        qreal dpr = devicePixelRatioF();
         m_backBuffer =
-            QImage(cols * m_cellSize.width(), rows * m_cellSize.height(), QImage::Format_RGB32);
+            QImage(cols * m_cellSize.width() * dpr, rows * m_cellSize.height() * dpr, QImage::Format_RGB32);
+        m_backBuffer.setDevicePixelRatio(dpr);
         VTermState *state = vterm_obtain_state(m_vterm);
         VTermColor dfg, dbg;
         vterm_state_get_default_colors(state, &dfg, &dbg);
@@ -473,6 +475,7 @@ void KodoTerm::drawRestorationBanner(QPainter &painter) {
     QFont f = font();
     f.setBold(true);
     f.setPointSize(f.pointSize() * 1.5);
+    f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     painter.setFont(f);
 
     QFontMetrics fm(f);
@@ -481,7 +484,8 @@ void KodoTerm::drawRestorationBanner(QPainter &painter) {
     QRect bannerRect(0, 0, textRect.width() + padding * 2, textRect.height() + padding);
     bannerRect.moveCenter(rect().center());
 
-    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);
+    painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
     painter.setBrush(QColor(0, 0, 0, 180));
     painter.setPen(Qt::NoPen);
     painter.drawRoundedRect(bannerRect, 10, 10);
@@ -692,9 +696,10 @@ void KodoTerm::renderToBackbuffer() {
     QPainter painter(&m_backBuffer);
     QFont font = m_config.font;
     font.setKerning(false);
+    font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     painter.setFont(font);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
-    painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, false); // Always false for cell backgrounds to prevent gaps
 
     VTermState *state = vterm_obtain_state(m_vterm);
     VTermColor dfg, dbg;
@@ -769,12 +774,12 @@ void KodoTerm::renderToBackbuffer() {
                 std::swap(fg, bg);
             }
 
-            QRect rect(c * m_cellSize.width(), r * m_cellSize.height(),
-                       cell.width * m_cellSize.width(), m_cellSize.height());
+            QRectF rect(c * m_cellSize.width(), r * m_cellSize.height(),
+                        cell.width * m_cellSize.width(), m_cellSize.height());
             painter.fillRect(rect, bg);
 
             if (m_config.customBoxDrawing && isBoxChar(cell.chars[0])) {
-                drawBoxChar(painter, rect, cell.chars[0], fg);
+                drawBoxChar(painter, rect.toRect(), cell.chars[0], fg);
             } else if (cell.chars[0] != 0) {
                 int n_chars = 0;
                 while (n_chars < VTERM_MAX_CHARS_PER_CELL && cell.chars[n_chars]) {
@@ -1403,7 +1408,8 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
     }
 
     if (!m_restoring && !m_backBuffer.isNull()) {
-        painter.drawImage(e->rect(), m_backBuffer, e->rect());
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.drawImage(0, 0, m_backBuffer);
     }
 
     if (m_restorationBannerActive) {
@@ -1443,7 +1449,10 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         QString m = tr("Terminal stopped (Ctrl+S). Press Ctrl+Q to resume.");
         QFont f = font();
         f.setBold(true);
+        f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
         painter.setFont(f);
+        painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
+        painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);
         QFontMetrics fm(f);
         QRect r = fm.boundingRect(m).adjusted(-5, -2, 5, 2);
         r.moveCenter(QPoint(width() / 2, r.height() / 2 + 10));

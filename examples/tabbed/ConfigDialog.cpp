@@ -204,6 +204,7 @@ ConfigDialog::ConfigDialog(QWidget *parent) : QDialog(parent) {
 void ConfigDialog::updatePreview() {
     QFont f = m_fontCombo->currentFont();
     f.setPointSizeF(m_fontSizeSpin->value());
+    f.setKerning(false);
     f.setStyleStrategy(m_textAntialiasing->isChecked() ? QFont::PreferAntialias : QFont::NoAntialias);
     m_fontPreview->setFont(f);
 
