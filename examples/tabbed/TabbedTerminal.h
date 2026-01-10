@@ -7,6 +7,10 @@
 #include <QSystemTrayIcon>
 #include <QTabWidget>
 
+#ifdef HAS_DBUS
+#include <QtDBus/QDBusObjectPath>
+#endif
+
 class TabbedTerminal : public QMainWindow {
     Q_OBJECT
   public:
@@ -30,16 +34,28 @@ class TabbedTerminal : public QMainWindow {
     void toggleWindowVisibility();
     void showAboutDialog();
 
+  private slots:
+#ifdef HAS_DBUS
+    void onPortalShortcutActivated(const QString &sessionHandle, const QString &shortcutId,
+                                   const QVariantMap &options);
+    void onPortalSessionCreated(const QDBusObjectPath &handle);
+    void onPortalShortcutsBound(const QDBusObjectPath &handle);
+#endif
+
   protected:
     void closeEvent(QCloseEvent *event) override;
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
   private:
     void setupTrayIcon();
+    void setupWaylandShortcut();
 
     QTabWidget *m_tabs;
     QTimer *m_autoSaveTimer;
     bool m_useFullScreenMode = false;
     QSystemTrayIcon *m_trayIcon = nullptr;
     QAction *m_toggleWindowAction = nullptr;
+#ifdef HAS_DBUS
+    QString m_portalSessionHandle;
+#endif
 };

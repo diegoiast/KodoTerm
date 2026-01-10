@@ -11,6 +11,9 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+if(UNIX AND NOT APPLE)
+    find_package(Qt6 COMPONENTS DBus)
+endif()
 option(BUILD_EXAMPLES "Build the examples" ON)
 
 include(FetchContent)

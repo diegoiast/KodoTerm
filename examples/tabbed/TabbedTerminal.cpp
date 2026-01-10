@@ -16,9 +16,29 @@
 #include <QTabBar>
 #include <QTimer>
 #include <QToolButton>
+#ifdef HAS_DBUS
+#include <QtDBus/QDBusConnection>
+#include <QtDBus/QDBusMessage>
+#include <QtDBus/QDBusPendingCall>
+#include <QtDBus/QDBusReply>
+#endif
 
 #ifdef Q_OS_WIN
 #include <windows.h>
+#endif
+
+#ifdef HAS_X11
+#include <QtGui/qguiapplication.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <xcb/xcb.h>
+#ifdef HAS_X11_NATIVE_INTERFACE
+#include <QtGui/QNativeInterface>
+#endif
+#undef KeyPress
+#undef KeyRelease
+#undef FocusIn
+#undef FocusOut
 #endif
 
 TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
@@ -28,6 +48,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     m_tabs->setMovable(true);
     setCentralWidget(m_tabs);
     setupTrayIcon();
+    setupWaylandShortcut();
 
     // New Tab button (Left corner)
     QToolButton *newTabBtn = new QToolButton(m_tabs);
@@ -421,6 +442,14 @@ void TabbedTerminal::setupTrayIcon() {
     RegisterHotKey((HWND)winId(), 100, MOD_CONTROL | MOD_ALT, 'T');
 #endif
 
+#if defined(HAS_X11_NATIVE_INTERFACE)
+    if (auto dpy = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->display()) {
+        Window root = DefaultRootWindow(dpy);
+        int keycode = XKeysymToKeycode(dpy, XK_T);
+        XGrabKey(dpy, keycode, ControlMask | Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
+    }
+#endif
+
     QMenu *trayMenu = new QMenu(this);
 
     m_toggleWindowAction =
@@ -446,6 +475,79 @@ void TabbedTerminal::setupTrayIcon() {
     m_trayIcon->show();
 }
 
+void TabbedTerminal::setupWaylandShortcut() {
+#ifdef HAS_DBUS
+    if (!QGuiApplication::platformName().contains("wayland", Qt::CaseInsensitive)) {
+        return;
+    }
+
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!bus.isConnected()) {
+        return;
+    }
+
+    // 1. Create a session
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.GlobalShortcuts", "CreateSession");
+
+    QVariantMap options;
+    options["session_handle_token"] = "kodoshell_session";
+    msg << options;
+
+    bus.callWithCallback(msg, this, SLOT(onPortalSessionCreated(QDBusObjectPath)), nullptr);
+
+    bus.connect("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.GlobalShortcuts", "Activated", this,
+                SLOT(onPortalShortcutActivated(QString, QString, QVariantMap)));
+#endif
+}
+
+#ifdef HAS_DBUS
+void TabbedTerminal::onPortalSessionCreated(const QDBusObjectPath &handle) {
+    m_portalSessionHandle = handle.path();
+    QDBusConnection bus = QDBusConnection::sessionBus();
+
+    // 2. Bind shortcuts
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.portal.GlobalShortcuts", "BindShortcuts");
+
+    struct Shortcut {
+        QString id;
+        QVariantMap description;
+    };
+
+    QVariantMap desc;
+    desc["description"] = tr("Toggle KodoShell Visibility");
+    // Ctrl+Alt+T represented as a string or keysym is portal dependent,
+    // but usually handled in a dialog. We provide a hint.
+    desc["preferred_trigger"] = "Ctrl+Alt+T";
+
+    QList<QVariant> shortcuts;
+    QVariantList shortcutList;
+    QVariantList s;
+    s << "toggle_window" << desc;
+    shortcutList << QVariant(s);
+
+    msg << QDBusObjectPath(m_portalSessionHandle) << shortcutList << "" << QVariantMap();
+
+    bus.callWithCallback(msg, this, SLOT(onPortalShortcutsBound(QDBusObjectPath)));
+}
+
+void TabbedTerminal::onPortalShortcutsBound(const QDBusObjectPath &handle) {
+    qDebug() << "Wayland shortcuts bound to portal session:" << handle.path();
+}
+
+void TabbedTerminal::onPortalShortcutActivated(const QString &sessionHandle,
+                                               const QString &shortcutId,
+                                               const QVariantMap &options) {
+    if (shortcutId == "toggle_window") {
+        toggleWindowVisibility();
+    }
+}
+#endif
+
 void TabbedTerminal::toggleWindowVisibility() {
     if (isVisible() && !isMinimized()) {
         hide();
@@ -470,6 +572,26 @@ bool TabbedTerminal::nativeEvent(const QByteArray &eventType, void *message, qin
         if (msg->message == WM_HOTKEY && msg->wParam == 100) {
             toggleWindowVisibility();
             return true;
+        }
+    }
+#endif
+
+#ifdef HAS_X11
+    if (eventType == "xcb_generic_event_t") {
+        xcb_generic_event_t *event = static_cast<xcb_generic_event_t *>(message);
+        if ((event->response_type & ~0x80) == XCB_KEY_PRESS) {
+            xcb_key_press_event_t *keyEvent = reinterpret_cast<xcb_key_press_event_t *>(event);
+#ifdef HAS_X11_NATIVE_INTERFACE
+            if (auto dpy =
+                    qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->display()) {
+                int keycode = XKeysymToKeycode(dpy, XK_T);
+                if (keyEvent->detail == keycode &&
+                    (keyEvent->state & (XCB_MOD_MASK_CONTROL | XCB_MOD_MASK_1))) {
+                    toggleWindowVisibility();
+                    return true;
+                }
+            }
+#endif
         }
     }
 #endif
