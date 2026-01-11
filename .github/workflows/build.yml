@@ -61,9 +61,25 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          $WIND_PATH = "${{ env.QT_ROOT_DIR }}\bin\windeployqt.exe"
-          $EXE_PATH = Get-ChildItem -Path build -Filter KodoShell.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
-          & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
+          # Dynamically find windeployqt.exe
+          $WIND_PATH = (Get-ChildItem -Path "${{ env.QT_ROOT_DIR }}" -Filter windeployqt.exe -Recurse | Select-Object -First 1).FullName
+          if (-not $WIND_PATH) {
+            Write-Warning "windeployqt.exe not found in QT_ROOT_DIR, trying PATH..."
+            $WIND_PATH = Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          }
+          
+          # Dynamically find the executable
+          $EXE_PATH = (Get-ChildItem -Path build -Filter KodoShell.exe -Recurse | Where-Object { $_.FullName -notlike "*_autogen*" } | Select-Object -First 1).FullName
+          
+          if ($WIND_PATH -and $EXE_PATH) {
+            Write-Host "Using windeployqt: $WIND_PATH"
+            Write-Host "Deploying for: $EXE_PATH"
+            & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
+          } else {
+            Write-Error "Required tools or executable for deployment not found! WIND_PATH=$WIND_PATH, EXE_PATH=$EXE_PATH"
+            # We continue to let cpack try, though it might produce an incomplete installer
+          }
+          
           cd build
           cpack -C Release
         shell: pwsh
