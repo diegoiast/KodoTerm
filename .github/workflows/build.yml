@@ -86,9 +86,9 @@ jobs:
           # Get absolute path for CPack
           $DEPLOY_ABS_PATH = (Get-Item "deploy").FullName.Replace('\', '/')
           
-          # Point CPack to the deploy directory
+          # Point CPack to the deploy directory and disable default project installation
           cd build
-          cpack -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/"
+          cpack -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS=""
           mv *.msi ..\
           mv *.zip ..\
         shell: pwsh
