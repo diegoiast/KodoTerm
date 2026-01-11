@@ -27,8 +27,8 @@ jobs:
         id: install-qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.0'
-          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2022_arm64' || 'win64_msvc2022_64') || '' }}
+          version: '6.8.1'
+          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2022_arm64_cross_compiled' || 'win64_msvc2022_64') || '' }}
           cache: true
 
       - name: Install Linux Deps
