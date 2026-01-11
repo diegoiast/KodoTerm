@@ -1,4 +1,4 @@
-name: Build
+name: Build & Package
 
 on:
   push:
@@ -14,11 +14,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { name: "Linux (x64)",       os: ubuntu-latest }
-          - { name: "Linux (ARM64)",     os: ubuntu-latest }
-          - { name: "Windows (x64)",     os: windows-latest }
-          - { name: "Windows (ARM64)",   os: windows-latest }
-          - { name: "macOS (ARM64)",     os: macos-14 }
+          - { name: "Linux (x64)",       os: ubuntu-latest, arch: x64 }
+          - { name: "Linux (ARM64)",     os: ubuntu-24.04-arm, arch: arm64 }
+          - { name: "Windows (x64)",     os: windows-latest, arch: x64 }
+          - { name: "Windows (ARM64)",   os: windows-latest, arch: arm64 }
+          - { name: "macOS (ARM64)",     os: macos-14, arch: arm64 }
 
     steps:
       - uses: actions/checkout@v4
@@ -27,16 +27,80 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.6.0'
+          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2019_arm64' || 'win64_msvc2019_64') || '' }}
           cache: true
 
       - name: Install Linux Deps
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-dev libx11-dev libxcb1-dev
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-dev libx11-dev libxcb1-dev wget
+          
+          # Use uname -m to get the correct architecture (x86_64 or aarch64)
+          LD_ARCH=$(uname -m)
+          
+          # Download linuxdeploy for current architecture
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$LD_ARCH.AppImage
+          wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-$LD_ARCH.AppImage
+          chmod +x linuxdeploy-$LD_ARCH.AppImage linuxdeploy-plugin-qt-$LD_ARCH.AppImage
+          
+          # Create symlinks to simplify the packaging step
+          ln -s linuxdeploy-$LD_ARCH.AppImage linuxdeploy.AppImage
+          ln -s linuxdeploy-plugin-qt-$LD_ARCH.AppImage linuxdeploy-plugin-qt.AppImage
+        shell: bash
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -A ${{ matrix.config.arch == 'arm64' && 'ARM64' || 'x64' }}
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          fi
+        shell: bash
 
       - name: Build
         run: cmake --build build --config Release
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          windeployqt --release --no-translations --compiler-runtime build/examples/KodoShell.exe
+          cd build
+          cpack -C Release
+        shell: pwsh
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          macdeployqt build/examples/KodoShell.app
+          cd build
+          cpack -C Release
+        shell: bash
+
+      - name: Package (Linux AppImage)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          export VERSION=0.1.0
+          cmake --install build --prefix AppDir
+          
+          # Use the path provided by the Qt installation action
+          export QMAKE=${{ env.Qt6_DIR }}/bin/qmake
+          
+          # Use the symlinked linuxdeploy (architecture independent name)
+          ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir \
+            --plugin qt \
+            --desktop-file examples/tabbed/KodoShell.desktop \
+            --icon-file examples/tabbed/KodoShell.svg \
+            --output appimage
+          
+          mv KodoShell-*.AppImage KodoTerm-0.1.0-${{ matrix.config.arch }}.AppImage
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: KodoTerm-${{ matrix.config.name }}
+          path: |
+            build/*.msi
+            build/*.dmg
+            *.AppImage

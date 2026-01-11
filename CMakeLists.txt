@@ -81,3 +81,27 @@ target_link_libraries(KodoTerm PUBLIC
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+if(UNIX AND NOT APPLE)
+    install(FILES examples/tabbed/KodoShell.desktop DESTINATION share/applications)
+endif()
+
+set(CPACK_PACKAGE_NAME "KodoTerm")
+set(CPACK_PACKAGE_VENDOR "Diego Iastrubni")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "KodoTerm Terminal Emulator")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "KodoTerm")
+
+if(WIN32)
+    set(CPACK_GENERATOR "WIX")
+    set(CPACK_WIX_UPGRADE_GUID "B2A1B2A1-B2A1-B2A1-B2A1-B2A1B2A1B2A1")
+    set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/kodoshell-windows.png")
+elseif(APPLE)
+    set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_BUNDLE_NAME "KodoShell")
+    set(CPACK_APPLE_GUI_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
+else()
+    set(CPACK_GENERATOR "TGZ")
+endif()
+
+include(CPack)

@@ -62,3 +62,12 @@ if(X11_FOUND)
         target_compile_definitions(KodoShell PRIVATE HAS_X11_NATIVE_INTERFACE)
     endif()
 endif()
+
+install(TARGETS KodoShell
+    RUNTIME DESTINATION bin
+    BUNDLE DESTINATION .
+)
+
+if(UNIX AND NOT APPLE)
+    install(FILES tabbed/KodoShell.svg DESTINATION share/icons/hicolor/scalable/apps)
+endif()
