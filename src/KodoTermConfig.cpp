@@ -313,12 +313,20 @@ void TerminalTheme::load(QSettings &settings, const QString &group) {
     }
 }
 
+KodoTermConfig::KodoTermConfig(QSettings &settings) {
+    setDefaults();
+    load(settings);
+}
+
 KodoTermConfig::KodoTermConfig() { setDefaults(); }
 
 void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
     font.setStyleHint(QFont::Monospace);
+    font.setKerning(false);
     textAntialiasing = false;
+    font.setStyleStrategy(QFont::NoAntialias);
+
     customBoxDrawing = false;
     copyOnSelect = true;
     pasteOnMiddleClick = true;
@@ -334,7 +342,7 @@ void KodoTermConfig::setDefaults() {
     theme = TerminalTheme::defaultTheme();
 }
 
-void KodoTermConfig::loadFromJson(const QJsonObject &json) {
+void KodoTermConfig::load(const QJsonObject &json) {
     if (json.contains("font")) {
         QJsonObject fontObj = json["font"].toObject();
         font.setFamily(fontObj["family"].toString());
@@ -343,6 +351,9 @@ void KodoTermConfig::loadFromJson(const QJsonObject &json) {
     if (json.contains("textAntialiasing")) {
         textAntialiasing = json["textAntialiasing"].toBool();
     }
+    font.setKerning(false);
+    font.setStyleStrategy(textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
+
     if (json.contains("customBoxDrawing")) {
         customBoxDrawing = json["customBoxDrawing"].toBool();
     }
@@ -387,7 +398,6 @@ QJsonObject KodoTermConfig::saveToJson() const {
     fontObj["family"] = font.family();
     fontObj["size"] = font.pointSizeF();
     obj["font"] = fontObj;
-
     obj["textAntialiasing"] = textAntialiasing;
     obj["customBoxDrawing"] = customBoxDrawing;
     obj["copyOnSelect"] = copyOnSelect;
@@ -410,6 +420,8 @@ void KodoTermConfig::load(QSettings &settings) {
         font.setPointSizeF(settings.value("font/size", 10).toDouble());
     }
     textAntialiasing = settings.value("textAntialiasing", textAntialiasing).toBool();
+    font.setKerning(false);
+    font.setStyleStrategy(textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     customBoxDrawing = settings.value("customBoxDrawing", customBoxDrawing).toBool();
     copyOnSelect = settings.value("copyOnSelect", copyOnSelect).toBool();
     pasteOnMiddleClick = settings.value("pasteOnMiddleClick", pasteOnMiddleClick).toBool();
@@ -422,7 +434,6 @@ void KodoTermConfig::load(QSettings &settings) {
     logDirectory = settings.value("logDirectory", logDirectory).toString();
     wordSelectionRegex = settings.value("wordSelectionRegex", wordSelectionRegex).toString();
     maxScrollback = settings.value("maxScrollback", maxScrollback).toInt();
-
     theme.load(settings, "Theme");
 }
 
@@ -441,6 +452,5 @@ void KodoTermConfig::save(QSettings &settings) const {
     settings.setValue("logDirectory", logDirectory);
     settings.setValue("wordSelectionRegex", wordSelectionRegex);
     settings.setValue("maxScrollback", maxScrollback);
-
     theme.save(settings, "Theme");
 }

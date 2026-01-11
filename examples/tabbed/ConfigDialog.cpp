@@ -245,8 +245,7 @@ void ConfigDialog::loadSettings() {
     m_fullScreen->setChecked(s.value("Window/UseFullScreenMode", false).toBool());
     m_enableTray->setChecked(s.value("Window/EnableTray", false).toBool());
 
-    KodoTermConfig config;
-    config.load(s);
+    KodoTermConfig config(s);
     m_currentTheme = config.theme; // Store current theme
     setTerminalConfig(config);
 }

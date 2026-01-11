@@ -47,6 +47,7 @@ static VTermColor toVTermColor(const QColor &c) {
 
 void KodoTerm::setConfig(const KodoTermConfig &config) {
     m_config = config;
+    setFont(m_config.font);
     setTheme(m_config.theme);
 
     // Force a full redraw by resetting cell size and calling updateTerminalSize
@@ -227,7 +228,18 @@ void KodoTerm::onPtyReadyRead(const QByteArray &data) {
         flushTerminal();
     }
 }
-void KodoTerm::onScrollValueChanged(int value) { damageAll(); }
+void KodoTerm::onScrollValueChanged(int value) {
+    if (m_vterm && !m_backBuffer.isNull()) {
+        VTermState *state = vterm_obtain_state(m_vterm);
+        VTermColor dfg, dbg;
+        vterm_state_get_default_colors(state, &dfg, &dbg);
+        m_backBuffer.fill(mapColor(dbg, state));
+        for (auto &cell : m_cellCache) {
+            cell.chars[0] = (uint32_t)-1;
+        }
+    }
+    damageAll();
+}
 void KodoTerm::scrollUp(int lines) { m_scrollBar->setValue(m_scrollBar->value() - lines); }
 void KodoTerm::scrollDown(int lines) { m_scrollBar->setValue(m_scrollBar->value() + lines); }
 void KodoTerm::pageUp() { scrollUp(m_scrollBar->pageStep()); }
@@ -475,7 +487,6 @@ void KodoTerm::drawRestorationBanner(QPainter &painter) {
     QFont f = font();
     f.setBold(true);
     f.setPointSize(f.pointSize() * 1.5);
-    f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     painter.setFont(f);
 
     QFontMetrics fm(f);
@@ -693,11 +704,12 @@ void KodoTerm::renderToBackbuffer() {
         m_dirty = false;
         return;
     }
+
     QPainter painter(&m_backBuffer);
-    QFont font = m_config.font;
-    font.setKerning(false);
-    font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
-    painter.setFont(font);
+    QFont f = font();
+    f.setKerning(false);
+    f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
+    painter.setFont(f);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
     painter.setRenderHint(QPainter::Antialiasing,
                           false); // Always false for cell backgrounds to prevent gaps
@@ -706,6 +718,7 @@ void KodoTerm::renderToBackbuffer() {
     VTermColor dfg, dbg;
     vterm_state_get_default_colors(state, &dfg, &dbg);
     QColor defBg = mapColor(dbg, state), defFg = mapColor(dfg, state);
+
     VTermPos sS = m_selectionStart, sE = m_selectionEnd;
     bool hasS = (sS.row != -1);
     if (hasS && (sS.row > sE.row || (sS.row == sE.row && sS.col > sE.col))) {
@@ -822,44 +835,39 @@ int KodoTerm::onMoveRect(VTermRect d, VTermRect s, void *u) {
         return 1;
     }
 
-    if (!w->m_restoring && !w->m_backBuffer.isNull()) {
-        int cw = w->m_cellSize.width(), ch = w->m_cellSize.height();
-        QRect sR(s.start_col * cw, s.start_row * ch, (s.end_col - s.start_col) * cw,
-                 (s.end_row - s.start_row) * ch);
-        QImage copy = w->m_backBuffer.copy(sR);
-        QPainter p(&w->m_backBuffer);
-        p.drawImage(d.start_col * cw, d.start_row * ch, copy);
-        p.end();
-
-        int cols, rows;
-        vterm_get_size(w->m_vterm, &rows, &cols);
-        int h = s.end_row - s.start_row;
-        if (d.start_row < s.start_row) {
-            for (int r = 0; r < h; ++r) {
-                int sr = s.start_row + r, dr = d.start_row + r;
-                if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
-                    std::copy(w->m_cellCache.begin() + sr * cols,
-                              w->m_cellCache.begin() + sr * cols + cols,
-                              w->m_cellCache.begin() + dr * cols);
-                    std::copy(w->m_selectedCache.begin() + sr * cols,
-                              w->m_selectedCache.begin() + sr * cols + cols,
-                              w->m_selectedCache.begin() + dr * cols);
-                }
+    int cols, rows;
+    vterm_get_size(w->m_vterm, &rows, &cols);
+    int h = s.end_row - s.start_row;
+    if (d.start_row < s.start_row) {
+        for (int r = 0; r < h; ++r) {
+            int sr = s.start_row + r, dr = d.start_row + r;
+            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
+                std::copy(w->m_cellCache.begin() + sr * cols,
+                          w->m_cellCache.begin() + sr * cols + cols,
+                          w->m_cellCache.begin() + dr * cols);
+                std::copy(w->m_selectedCache.begin() + sr * cols,
+                          w->m_selectedCache.begin() + sr * cols + cols,
+                          w->m_selectedCache.begin() + dr * cols);
             }
-        } else {
-            for (int r = h - 1; r >= 0; --r) {
-                int sr = s.start_row + r, dr = d.start_row + r;
-                if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
-                    std::copy(w->m_cellCache.begin() + sr * cols,
-                              w->m_cellCache.begin() + sr * cols + cols,
-                              w->m_cellCache.begin() + dr * cols);
-                    std::copy(w->m_selectedCache.begin() + sr * cols,
-                              w->m_selectedCache.begin() + sr * cols + cols,
-                              w->m_selectedCache.begin() + dr * cols);
-                }
+        }
+    } else {
+        for (int r = h - 1; r >= 0; --r) {
+            int sr = s.start_row + r, dr = d.start_row + r;
+            if (sr >= 0 && sr < rows && dr >= 0 && dr < rows) {
+                std::copy(w->m_cellCache.begin() + sr * cols,
+                          w->m_cellCache.begin() + sr * cols + cols,
+                          w->m_cellCache.begin() + dr * cols);
+                std::copy(w->m_selectedCache.begin() + sr * cols,
+                          w->m_selectedCache.begin() + sr * cols + cols,
+                          w->m_selectedCache.begin() + dr * cols);
             }
         }
     }
+
+    w->m_dirtyRect.start_row = std::min({w->m_dirtyRect.start_row, d.start_row, s.start_row});
+    w->m_dirtyRect.end_row = std::max({w->m_dirtyRect.end_row, d.end_row, s.end_row});
+    w->m_dirtyRect.start_col = 0;
+    w->m_dirtyRect.end_col = cols;
 
     w->m_dirty = true;
     if (!w->m_restoring) {
@@ -1268,6 +1276,12 @@ void KodoTerm::clearScrollback() {
 void KodoTerm::resetTerminal() {
     vterm_screen_reset(m_vtermScreen, 1);
     m_flowControlStopped = false;
+    if (m_vterm && !m_backBuffer.isNull()) {
+        VTermState *state = vterm_obtain_state(m_vterm);
+        VTermColor dfg, dbg;
+        vterm_state_get_default_colors(state, &dfg, &dbg);
+        m_backBuffer.fill(mapColor(dbg, state));
+    }
     clearScrollback();
     damageAll();
 }
@@ -1339,6 +1353,9 @@ void KodoTerm::zoomIn() {
         s = m_config.font.pointSize();
     }
     m_config.font.setPointSizeF(s + 1.0);
+    m_config.font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias
+                                                             : QFont::NoAntialias);
+    setFont(m_config.font);
     updateTerminalSize();
     update();
 }
@@ -1349,12 +1366,18 @@ void KodoTerm::zoomOut() {
     }
     if (s > 1.0) {
         m_config.font.setPointSizeF(s - 1.0);
+        m_config.font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias
+                                                                 : QFont::NoAntialias);
+        setFont(m_config.font);
         updateTerminalSize();
         update();
     }
 }
 void KodoTerm::resetZoom() {
     m_config.font.setPointSize(10);
+    m_config.font.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias
+                                                             : QFont::NoAntialias);
+    setFont(m_config.font);
     updateTerminalSize();
     update();
 }
@@ -1396,6 +1419,11 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
     QElapsedTimer timer;
     timer.start();
 
+    // Ensure backbuffer resolution matches current screen resolution
+    if (!m_backBuffer.isNull() && m_backBuffer.devicePixelRatio() != devicePixelRatioF()) {
+        updateTerminalSize();
+    }
+
     if (m_dirty && !m_restoring) {
         renderToBackbuffer();
     }
@@ -1405,7 +1433,7 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         VTermState *state = vterm_obtain_state(m_vterm);
         VTermColor dfg, dbg;
         vterm_state_get_default_colors(state, &dfg, &dbg);
-        painter.fillRect(e->rect(), mapColor(dbg, state));
+        painter.fillRect(rect(), mapColor(dbg, state));
     }
 
     if (!m_restoring && !m_backBuffer.isNull()) {
@@ -1450,7 +1478,6 @@ void KodoTerm::paintEvent(QPaintEvent *e) {
         QString m = tr("Terminal stopped (Ctrl+S). Press Ctrl+Q to resume.");
         QFont f = font();
         f.setBold(true);
-        f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
         painter.setFont(f);
         painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
         painter.setRenderHint(QPainter::Antialiasing, m_config.textAntialiasing);

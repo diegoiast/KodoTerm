@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <KodoTerm/KodoTermConfig.hpp>
 #include <QMainWindow>
 #include <QSystemTrayIcon>
 #include <QTabWidget>
@@ -52,6 +53,7 @@ class TabbedTerminal : public QMainWindow {
 
     QTabWidget *m_tabs;
     QTimer *m_autoSaveTimer;
+    KodoTermConfig m_config;
     bool m_useFullScreenMode = false;
     QSystemTrayIcon *m_trayIcon = nullptr;
     QAction *m_toggleWindowAction = nullptr;

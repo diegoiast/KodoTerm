@@ -167,6 +167,7 @@ TabbedTerminal::TabbedTerminal(QWidget *parent) : QMainWindow(parent) {
     resize(1024, 768);
     QTimer::singleShot(0, this, [this]() {
         QSettings s;
+        m_config.load(s);
         restoreGeometry(s.value("Window/Geometry").toByteArray());
 
         int tabCount = s.beginReadArray("Session/Tabs");
@@ -212,7 +213,6 @@ void TabbedTerminal::saveSession() {
     }
     s.endArray();
     s.setValue("Session/ActiveTab", m_tabs->currentIndex());
-    s.sync();
 }
 
 void TabbedTerminal::closeEvent(QCloseEvent *event) {
@@ -230,10 +230,6 @@ void TabbedTerminal::closeEvent(QCloseEvent *event) {
 void TabbedTerminal::addNewTab(const QString &program, const QString &workingDirectory,
                                const QString &logPath) {
     KodoTerm *console = new KodoTerm(m_tabs);
-    QSettings settings;
-    KodoTermConfig config;
-    config.load(settings);
-    console->setConfig(config);
     if (!program.isEmpty()) {
         console->setProgram(program);
     } else {
@@ -256,7 +252,6 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
     if (!workingDirectory.isEmpty()) {
         console->setWorkingDirectory(workingDirectory);
     }
-
     connect(console, &KodoTerm::windowTitleChanged, [this, console](const QString &title) {
         int index = m_tabs->indexOf(console);
         if (index != -1) {
@@ -264,22 +259,20 @@ void TabbedTerminal::addNewTab(const QString &program, const QString &workingDir
             updateTabColors();
         }
     });
-
     connect(console, &KodoTerm::cwdChanged, [this, console](const QString &) {
         console->setProperty("cwdReceived", true);
         updateTabColors();
     });
-
     connect(console, &KodoTerm::finished, this,
             [this, console](int exitCode, int exitStatus) { closeTab(console); });
 
     int index = m_tabs->addTab(console, tr("Terminal"));
     m_tabs->setCurrentIndex(index);
+    console->setConfig(m_config);
     console->setFocus();
-
     if (!logPath.isEmpty()) {
         console->setRestoreLog(logPath);
-        console->start(false); // Do not reset if restoring
+        console->start(false);
     } else {
         console->start(true);
     }
@@ -313,13 +306,11 @@ void TabbedTerminal::applySettings() {
     m_useFullScreenMode = s.value("Window/UseFullScreenMode", false).toBool();
     setupTrayIcon();
 
-    KodoTermConfig config;
-    config.load(s);
-
+    m_config.load(s);
     for (int i = 0; i < m_tabs->count(); ++i) {
         KodoTerm *console = qobject_cast<KodoTerm *>(m_tabs->widget(i));
         if (console) {
-            console->setConfig(config);
+            console->setConfig(m_config);
         }
     }
 }

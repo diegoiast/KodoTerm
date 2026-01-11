@@ -40,6 +40,7 @@ struct TerminalTheme {
 class KodoTermConfig {
   public:
     KodoTermConfig();
+    KodoTermConfig(QSettings &settings);
 
     QFont font;
     bool textAntialiasing;
@@ -57,7 +58,7 @@ class KodoTermConfig {
     TerminalTheme theme;
 
     void setDefaults();
-    void loadFromJson(const QJsonObject &json);
+    void load(const QJsonObject &json);
     QJsonObject saveToJson() const;
     void load(QSettings &settings);
     void save(QSettings &settings) const;
