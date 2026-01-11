@@ -70,12 +70,15 @@ jobs:
           Write-Host "Using windeployqt: $WIND_PATH"
           Write-Host "Deploying for: $EXE_PATH"
           
-          # Deploy dependencies into the bin folder of our deploy directory
-          & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
+          # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
+          $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
+          
+          # Deploy dependencies. Explicitly include 'platforms' which is often missed
+          & "$WIND_PATH" --release --no-translations --compiler-runtime --plugindir "deploy\bin" "$EXE_PATH"
           
           # Point CPack to the deploy directory
           cd build
-          cpack -C Release
+          cpack -C Release -D CPACK_INSTALLED_DIRECTORIES="..\\deploy;/"
         shell: pwsh
 
       - name: Package (macOS)
