@@ -23,6 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get short git SHA
+        id: git-sha
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Install Qt
         id: install-qt
         uses: jurplel/install-qt-action@v4
@@ -49,9 +54,9 @@ jobs:
       - name: Configure CMake
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCPACK_PACKAGE_VERSION_SUFFIX=${{ steps.git-sha.outputs.sha }}
           else
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_PACKAGE_VERSION_SUFFIX=${{ steps.git-sha.outputs.sha }}
           fi
         shell: bash
 
@@ -65,7 +70,7 @@ jobs:
           cmake --install build --prefix deploy
           
           $WIND_PATH = Join-Path "${{ env.QT_ROOT_DIR }}" "bin\windeployqt.exe"
-          $EXE_PATH = "deploy\bin\KodoShell.exe"
+          $EXE_PATH = "deploy\KodoShell.exe"
           
           Write-Host "Using windeployqt: $WIND_PATH"
           Write-Host "Deploying for: $EXE_PATH"
@@ -73,12 +78,11 @@ jobs:
           # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
           $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
           
-          # Deploy dependencies. Explicitly include 'platforms' which is often missed. 
-          # Remove network support to reduce size.
-          & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime --plugindir "deploy\bin" "$EXE_PATH"
+          # Deploy dependencies directly into the root of our deploy directory
+          & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime --plugindir "deploy" "$EXE_PATH"
           
           # Get absolute path for CPack
-          $DEPLOY_ABS_PATH = (Get-Item "deploy\bin").FullName.Replace('\', '/')
+          $DEPLOY_ABS_PATH = (Get-Item "deploy").FullName.Replace('\', '/')
           
           # Point CPack to the deploy directory
           cd build
@@ -102,7 +106,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          export VERSION=0.1.0
+          export VERSION=0.1.0-${{ steps.git-sha.outputs.sha }}
           cmake --install build --prefix AppDir
           
           # Ensure linuxdeploy can find Qt libraries for dependency scanning
@@ -118,7 +122,7 @@ jobs:
             --output appimage
           
           # Rename output to requested format
-          mv KodoShell-*.AppImage kodo-linux-${{ matrix.config.arch == 'x64' && 'amd64' || 'arm64' }}.appimage
+          mv KodoShell-*.AppImage kodo-linux-${{ matrix.config.arch == 'x64' && 'amd64' || 'arm64' }}-${{ steps.git-sha.outputs.sha }}.appimage
 
       - name: Upload Installers
         uses: actions/upload-artifact@v4
