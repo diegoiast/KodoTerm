@@ -66,8 +66,9 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install to a local directory first to gather all files
-          cmake --install build --prefix deploy
+          # Install to a local directory first to gather all files.
+          # Config MUST be specified for multi-config generators like MSVC.
+          cmake --install build --prefix deploy --config Release
           
           $WIND_PATH = Join-Path "${{ env.QT_ROOT_DIR }}" "bin\windeployqt.exe"
           $EXE_PATH = "deploy\KodoShell.exe"
@@ -78,8 +79,9 @@ jobs:
           # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
           $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
           
-          # Deploy dependencies directly into the root of our deploy directory
-          & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime --plugindir "deploy" "$EXE_PATH"
+          # Deploy dependencies. 
+          # Remove network support to reduce size.
+          & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime "$EXE_PATH"
           
           # Get absolute path for CPack
           $DEPLOY_ABS_PATH = (Get-Item "deploy").FullName.Replace('\', '/')
