@@ -24,9 +24,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Qt
+        id: install-qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.6.0'
+          version: '6.8.0'
           arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2019_arm64' || 'win64_msvc2019_64') || '' }}
           cache: true
 
@@ -36,15 +37,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0 libdbus-1-dev libx11-dev libxcb1-dev wget
           
-          # Use uname -m to get the correct architecture (x86_64 or aarch64)
           LD_ARCH=$(uname -m)
-          
-          # Download linuxdeploy for current architecture
           wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-$LD_ARCH.AppImage
           wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-$LD_ARCH.AppImage
           chmod +x linuxdeploy-$LD_ARCH.AppImage linuxdeploy-plugin-qt-$LD_ARCH.AppImage
           
-          # Create symlinks to simplify the packaging step
           ln -s linuxdeploy-$LD_ARCH.AppImage linuxdeploy.AppImage
           ln -s linuxdeploy-plugin-qt-$LD_ARCH.AppImage linuxdeploy-plugin-qt.AppImage
         shell: bash
@@ -64,7 +61,8 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          windeployqt --release --no-translations --compiler-runtime build/examples/KodoShell.exe
+          # Use full path to windeployqt
+          & "${{ env.QT_ROOT_DIR }}\bin\windeployqt.exe" --release --no-translations --compiler-runtime build\examples\KodoShell.exe
           cd build
           cpack -C Release
         shell: pwsh
@@ -72,7 +70,8 @@ jobs:
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
-          macdeployqt build/examples/KodoShell.app
+          # Use full path to macdeployqt
+          "${{ env.QT_ROOT_DIR }}/bin/macdeployqt" build/examples/KodoShell.app
           cd build
           cpack -C Release
         shell: bash
@@ -83,11 +82,8 @@ jobs:
         run: |
           export VERSION=0.1.0
           cmake --install build --prefix AppDir
-          
           # Use the path provided by the Qt installation action
-          export QMAKE=${{ env.Qt6_DIR }}/bin/qmake
-          
-          # Use the symlinked linuxdeploy (architecture independent name)
+          export QMAKE=${{ env.QT_ROOT_DIR }}/bin/qmake
           ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir \
             --plugin qt \
             --desktop-file examples/tabbed/KodoShell.desktop \

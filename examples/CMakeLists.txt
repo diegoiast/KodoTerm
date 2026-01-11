@@ -20,7 +20,7 @@ target_link_libraries(KodoTermSimple PRIVATE
     KodoTerm::KodoTerm
 )
 
-add_executable(KodoShell WIN32
+add_executable(KodoShell WIN32 MACOSX_BUNDLE
     tabbed/main.cpp
     tabbed/TabbedTerminal.cpp
     tabbed/TabbedTerminal.h
