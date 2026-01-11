@@ -61,14 +61,19 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
+          # Install to a local directory first to gather all files
+          cmake --install build --prefix deploy
+          
           $WIND_PATH = Join-Path "${{ env.QT_ROOT_DIR }}" "bin\windeployqt.exe"
-          $EXE_PATH = (Get-ChildItem -Path build -Filter KodoShell.exe -Recurse | Where-Object { $_.FullName -notlike "*_autogen*" } | Select-Object -First 1).FullName
+          $EXE_PATH = "deploy\bin\KodoShell.exe"
           
           Write-Host "Using windeployqt: $WIND_PATH"
           Write-Host "Deploying for: $EXE_PATH"
           
+          # Deploy dependencies into the bin folder of our deploy directory
           & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
           
+          # Point CPack to the deploy directory
           cd build
           cpack -C Release
         shell: pwsh
@@ -105,11 +110,18 @@ jobs:
           
           mv KodoShell-*.AppImage KodoTerm-0.1.0-${{ matrix.config.arch }}.AppImage
 
-      - name: Upload Artifacts
+      - name: Upload Installers
         uses: actions/upload-artifact@v4
         with:
-          name: KodoTerm-${{ matrix.config.name }}
+          name: KodoTerm-${{ matrix.config.name }}-Installer
           path: |
             build/*.msi
             build/*.dmg
             *.AppImage
+
+      - name: Upload Portable (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: KodoTerm-${{ matrix.config.name }}-Portable
+          path: build/*.zip
