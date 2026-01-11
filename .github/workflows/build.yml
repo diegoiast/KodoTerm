@@ -17,7 +17,7 @@ jobs:
           - { name: "Linux (x64)",       os: ubuntu-latest, arch: x64 }
           - { name: "Linux (ARM64)",     os: ubuntu-24.04-arm, arch: arm64 }
           - { name: "Windows (x64)",     os: windows-latest, arch: x64 }
-          - { name: "Windows (ARM64)",   os: windows-latest, arch: arm64 }
+          - { name: "Windows (ARM64)",   os: windows-latest-arm64, arch: arm64 }
           - { name: "macOS (ARM64)",     os: macos-14, arch: arm64 }
 
     steps:
@@ -28,7 +28,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.1'
-          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2022_arm64_cross_compiled' || 'win64_msvc2022_64') || '' }}
+          arch: ${{ matrix.config.os == 'windows-latest' && 'win64_msvc2022_64' || (matrix.config.os == 'windows-latest-arm64' && 'win64_msvc2022_arm64' || '') }}
           cache: true
 
       - name: Install Linux Deps
@@ -49,7 +49,7 @@ jobs:
       - name: Configure CMake
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -A ${{ matrix.config.arch == 'arm64' && 'ARM64' || 'x64' }}
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
           else
             cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
           fi
@@ -61,24 +61,13 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Dynamically find windeployqt.exe
-          $WIND_PATH = (Get-ChildItem -Path "${{ env.QT_ROOT_DIR }}" -Filter windeployqt.exe -Recurse | Select-Object -First 1).FullName
-          if (-not $WIND_PATH) {
-            Write-Warning "windeployqt.exe not found in QT_ROOT_DIR, trying PATH..."
-            $WIND_PATH = Get-Command windeployqt.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-          }
-          
-          # Dynamically find the executable
+          $WIND_PATH = Join-Path "${{ env.QT_ROOT_DIR }}" "bin\windeployqt.exe"
           $EXE_PATH = (Get-ChildItem -Path build -Filter KodoShell.exe -Recurse | Where-Object { $_.FullName -notlike "*_autogen*" } | Select-Object -First 1).FullName
           
-          if ($WIND_PATH -and $EXE_PATH) {
-            Write-Host "Using windeployqt: $WIND_PATH"
-            Write-Host "Deploying for: $EXE_PATH"
-            & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
-          } else {
-            Write-Error "Required tools or executable for deployment not found! WIND_PATH=$WIND_PATH, EXE_PATH=$EXE_PATH"
-            # We continue to let cpack try, though it might produce an incomplete installer
-          }
+          Write-Host "Using windeployqt: $WIND_PATH"
+          Write-Host "Deploying for: $EXE_PATH"
+          
+          & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
           
           cd build
           cpack -C Release
