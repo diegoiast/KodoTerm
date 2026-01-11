@@ -73,8 +73,9 @@ jobs:
           # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
           $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
           
-          # Deploy dependencies. Explicitly include 'platforms' which is often missed
-          & "$WIND_PATH" --release --no-translations --compiler-runtime --plugindir "deploy\bin" "$EXE_PATH"
+          # Deploy dependencies. Explicitly include 'platforms' which is often missed. 
+          # Remove network support to reduce size.
+          & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime --plugindir "deploy\bin" "$EXE_PATH"
           
           # Get absolute path for CPack
           $DEPLOY_ABS_PATH = (Get-Item "deploy\bin").FullName.Replace('\', '/')
@@ -82,6 +83,8 @@ jobs:
           # Point CPack to the deploy directory
           cd build
           cpack -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/"
+          mv *.msi ..\
+          mv *.zip ..\
         shell: pwsh
 
       - name: Package (macOS)
@@ -114,20 +117,21 @@ jobs:
             --icon-file examples/tabbed/KodoShell.svg \
             --output appimage
           
-          mv KodoShell-*.AppImage KodoTerm-0.1.0-${{ matrix.config.arch }}.AppImage
+          # Rename output to requested format
+          mv KodoShell-*.AppImage kodo-linux-${{ matrix.config.arch == 'x64' && 'amd64' || 'arm64' }}.appimage
 
       - name: Upload Installers
         uses: actions/upload-artifact@v4
         with:
           name: KodoTerm-${{ matrix.config.name }}-Installer
           path: |
-            build/*.msi
+            *.msi
             build/*.dmg
-            *.AppImage
+            *.appimage
 
       - name: Upload Portable (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: KodoTerm-${{ matrix.config.name }}-Portable
-          path: build/*.zip
+          path: *.zip
