@@ -28,7 +28,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.0'
-          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2019_arm64' || 'win64_msvc2019_64') || '' }}
+          arch: ${{ matrix.config.os == 'windows-latest' && (matrix.config.arch == 'arm64' && 'win64_msvc2022_arm64' || 'win64_msvc2022_64') || '' }}
           cache: true
 
       - name: Install Linux Deps
@@ -61,8 +61,9 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Use full path to windeployqt
-          & "${{ env.QT_ROOT_DIR }}\bin\windeployqt.exe" --release --no-translations --compiler-runtime build\examples\KodoShell.exe
+          $WIND_PATH = "${{ env.QT_ROOT_DIR }}\bin\windeployqt.exe"
+          $EXE_PATH = Get-ChildItem -Path build -Filter KodoShell.exe -Recurse | Select-Object -First 1 -ExpandProperty FullName
+          & "$WIND_PATH" --release --no-translations --compiler-runtime "$EXE_PATH"
           cd build
           cpack -C Release
         shell: pwsh
@@ -70,8 +71,10 @@ jobs:
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
-          # Use full path to macdeployqt
-          "${{ env.QT_ROOT_DIR }}/bin/macdeployqt" build/examples/KodoShell.app
+          # Find the app bundle
+          APP_BUNDLE=$(find build -name "KodoShell.app" -type d | head -n 1)
+          echo "Found app bundle at: $APP_BUNDLE"
+          "${{ env.QT_ROOT_DIR }}/bin/macdeployqt" "$APP_BUNDLE"
           cd build
           cpack -C Release
         shell: bash
@@ -82,9 +85,14 @@ jobs:
         run: |
           export VERSION=0.1.0
           cmake --install build --prefix AppDir
-          # Use the path provided by the Qt installation action
+          
+          # Ensure linuxdeploy can find Qt libraries for dependency scanning
+          export LD_LIBRARY_PATH=${{ env.QT_ROOT_DIR }}/lib:$LD_LIBRARY_PATH
           export QMAKE=${{ env.QT_ROOT_DIR }}/bin/qmake
+          
+          # Specify the executable to ensure Qt plugin scans correctly
           ./linuxdeploy.AppImage --appimage-extract-and-run --appdir AppDir \
+            --executable AppDir/bin/KodoShell \
             --plugin qt \
             --desktop-file examples/tabbed/KodoShell.desktop \
             --icon-file examples/tabbed/KodoShell.svg \
