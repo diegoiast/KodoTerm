@@ -76,9 +76,12 @@ jobs:
           # Deploy dependencies. Explicitly include 'platforms' which is often missed
           & "$WIND_PATH" --release --no-translations --compiler-runtime --plugindir "deploy\bin" "$EXE_PATH"
           
+          # Get absolute path for CPack
+          $DEPLOY_ABS_PATH = (Get-Item "deploy\bin").FullName.Replace('\', '/')
+          
           # Point CPack to the deploy directory
           cd build
-          cpack -C Release -D CPACK_INSTALLED_DIRECTORIES="..\\deploy;/"
+          cpack -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/"
         shell: pwsh
 
       - name: Package (macOS)
