@@ -94,6 +94,14 @@ jobs:
           mv *.zip ..\
         shell: pwsh
 
+      - name: Upload build log
+        if: runner.os == 'Windows'
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: wix-build-log
+          path: build/_CPack_Packages/win64/WIX/wix.log
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
