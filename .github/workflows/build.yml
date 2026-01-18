@@ -95,7 +95,6 @@ jobs:
         shell: pwsh
 
       - name: Upload build log
-        if: runner.os == 'Windows'
         if: failure()
         uses: actions/upload-artifact@v3
         with:
