@@ -29,12 +29,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libvterm)
 
 # Manually define the vterm library since it lacks CMakeLists.txt
-file(GLOB VTERM_SOURCES 
+file(GLOB VTERM_SOURCES
     "${libvterm_SOURCE_DIR}/src/*.c"
 )
 
 add_library(vterm STATIC ${VTERM_SOURCES})
-target_include_directories(vterm PUBLIC 
+target_include_directories(vterm PUBLIC
     "${libvterm_SOURCE_DIR}/include"
     "${libvterm_SOURCE_DIR}/src"
 )
@@ -52,22 +52,22 @@ set(KODOTERM_SOURCES
 )
 
 if(UNIX)
-    list(APPEND KODOTERM_SOURCES 
-        src/PtyProcess_unix.cpp 
+    list(APPEND KODOTERM_SOURCES
+        src/PtyProcess_unix.cpp
         src/PtyProcess_unix.h
     )
     # Check for util library (needed for forkpty on some systems)
     #find_library(UTIL_LIB util)
 elseif(WIN32)
-    list(APPEND KODOTERM_SOURCES 
-        src/PtyProcess_win.cpp 
+    list(APPEND KODOTERM_SOURCES
+        src/PtyProcess_win.cpp
         src/PtyProcess_win.h
     )
 endif()
 add_library(KodoTerm ${KODOTERM_SOURCES})
 add_library(KodoTerm::KodoTerm ALIAS KodoTerm)
 target_include_directories(KodoTerm PRIVATE src)
-target_include_directories(KodoTerm PUBLIC 
+target_include_directories(KodoTerm PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
@@ -78,36 +78,49 @@ target_link_libraries(KodoTerm PUBLIC
     vterm
 )
 
+
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+    if(UNIX AND NOT APPLE)
+        install(FILES examples/tabbed/KodoShell.desktop DESTINATION share/applications)
+    endif()
+
+    # why this? because WIX does not like files without extensions.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+        "${CMAKE_CURRENT_BINARY_DIR}/license.txt"
+        COPYONLY
+    )
+
+    set(CPACK_WIX_UPGRADE_GUID "2f231866-b181-4671-9d5e-bb2fdcec7cc4")
+    set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/diegoiast/KodoTerm/")
+    set(CPACK_PACKAGE_NAME "KodoShell")
+    set(CPACK_PACKAGE_VENDOR "Diego Iastrubni")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "KodoShell Terminal Emulator (based on KodoTerm)")
+    set(CPACK_PACKAGE_VERSION "0.0.1")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_BINARY_DIR}/license.txt")
+    set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+    if(CPACK_PACKAGE_VERSION_SUFFIX)
+        set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_VERSION_SUFFIX}")
+    endif()
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "KodoShell")
+
+    if(WIN32)
+        set(CPACK_GENERATOR "WIX;ZIP")
+        set(CPACK_WIX_UPGRADE_GUID "B2A1B2A1-B2A1-B2A1-B2A1-B2A1B2A1B2A1")
+        set(CPACK_WIX_PROGRAM_MENU_FOLDER "KodoShell")
+        set(CPACK_PACKAGE_EXECUTABLES "KodoShell" "KodoShell")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "Resources/KodoShell.ico")
+        set(CPACK_WIX_SHORTCUTS "KodoShell.ico")
+    elseif(APPLE)
+        set(CPACK_GENERATOR "DragNDrop")
+        set(CPACK_BUNDLE_NAME "KodoShell")
+        set(CPACK_APPLE_GUI_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
+        set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.diegoiast.kodoshell")
+    else()
+        set(CPACK_GENERATOR "TGZ")
+    endif()
+
+    include(CPack)
 endif()
 
-if(UNIX AND NOT APPLE)
-    install(FILES examples/tabbed/KodoShell.desktop DESTINATION share/applications)
-endif()
-
-set(CPACK_PACKAGE_NAME "KodoTerm")
-set(CPACK_PACKAGE_VENDOR "Diego Iastrubni")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "KodoTerm Terminal Emulator")
-set(CPACK_PACKAGE_VERSION "0.1.0")
-if(CPACK_PACKAGE_VERSION_SUFFIX)
-    set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_VERSION_SUFFIX}")
-endif()
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "KodoTerm")
-set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
-set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.diegoiast.kodoshell")
-
-if(WIN32)
-    set(CPACK_GENERATOR "WIX;ZIP")
-    set(CPACK_WIX_UPGRADE_GUID "B2A1B2A1-B2A1-B2A1-B2A1-B2A1B2A1B2A1")
-    set(CPACK_WIX_PROGRAM_MENU_FOLDER "KodoTerm")
-    set(CPACK_PACKAGE_EXECUTABLES "KodoShell" "KodoShell")
-elseif(APPLE)
-    set(CPACK_GENERATOR "DragNDrop")
-    set(CPACK_BUNDLE_NAME "KodoShell")
-    set(CPACK_APPLE_GUI_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist")
-else()
-    set(CPACK_GENERATOR "TGZ")
-endif()
-
-include(CPack)

@@ -57,7 +57,7 @@ if(X11_FOUND)
             return 0;
         }
     " HAS_X11_NATIVE_INTERFACE)
-    
+
     if(HAS_X11_NATIVE_INTERFACE)
         target_compile_definitions(KodoShell PRIVATE HAS_X11_NATIVE_INTERFACE)
     endif()
@@ -78,3 +78,18 @@ endif()
 if(UNIX AND NOT APPLE)
     install(FILES tabbed/KodoShell.svg DESTINATION share/icons/hicolor/scalable/apps)
 endif()
+
+
+set(CPACK_PACKAGE_NAME "KodoShell")
+set(CPACK_PACKAGE_VENDOR "Diego Iastrubni (TM)")
+set(CPACK_PACKAGE_VERSION "0.0.2")
+set(CPACK_PACKAGE_VERSION_MAJOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "2")
+set(CPACK_WIX_UPGRADE_GUID "2f231866-b181-4671-9d5e-bb2fdcec7cc4")
+set(CPACK_WIX_PROGRAM_MENU_FOLDER "KodoShell")
+#set(CPACK_WIX_EXTRA_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tabbed/KodoShell.ico")
+#set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/tabbed/KodoShell.ico")
+#set(CPACK_PACKAGE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/tabbed/KodoShell.ico")
+#set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_WIX_SHORTCUTS "KodoShell.exe;KodoShell;KodoShell.ico")
