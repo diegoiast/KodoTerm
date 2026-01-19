@@ -66,8 +66,6 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install to a local directory first to gather all files.
-          # Config MUST be specified for multi-config generators like MSVC.
           cmake --install build --prefix deploy --config Release
 
           $WIND_PATH = Join-Path "${{ env.QT_ROOT_DIR }}" "bin\windeployqt.exe"
@@ -76,19 +74,15 @@ jobs:
           Write-Host "Using windeployqt: $WIND_PATH"
           Write-Host "Deploying for: $EXE_PATH",
 
-          # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
           $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
 
-          # Deploy dependencies.
-          # Remove network support to reduce size.
+          # Deploy dependencies. Remove network support to reduce size.
           & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime "$EXE_PATH"
-
-          # Get absolute path for CPack
           $DEPLOY_ABS_PATH = (Get-Item "deploy").FullName.Replace('\', '/')
 
-          # Point CPack to the deploy directory and disable default project installation
-          cd build
+          cd deploy
           cpack -G WIX -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
+          cpack -G ZIP -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
 
           mv *.msi ..\
           mv *.zip ..\
