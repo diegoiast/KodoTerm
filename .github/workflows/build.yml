@@ -80,7 +80,7 @@ jobs:
           & "$WIND_PATH" --release --no-translations --no-network --compiler-runtime "$EXE_PATH"
           $DEPLOY_ABS_PATH = (Get-Item "deploy").FullName.Replace('\', '/')
 
-          cd deploy
+          cd build
           cpack -G WIX -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
           #cpack -G ZIP -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
 
