@@ -82,7 +82,7 @@ jobs:
 
           cd deploy
           cpack -G WIX -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
-          cpack -G ZIP -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
+          #cpack -G ZIP -C Release -D "CPACK_INSTALLED_DIRECTORIES=$DEPLOY_ABS_PATH;/" -D CPACK_INSTALL_CMAKE_PROJECTS="" --verbose
 
           mv *.msi ..\
           mv *.zip ..\
