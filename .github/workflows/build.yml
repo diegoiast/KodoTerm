@@ -54,7 +54,7 @@ jobs:
       - name: Configure CMake
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCPACK_PACKAGE_VERSION_SUFFIX=${{ steps.git-sha.outputs.sha }}
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DGIT_SHA=${{ steps.git-sha.outputs.sha }}
           else
             cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCPACK_PACKAGE_VERSION_SUFFIX=${{ steps.git-sha.outputs.sha }}
           fi
@@ -74,7 +74,7 @@ jobs:
           $EXE_PATH = "deploy\KodoShell.exe"
 
           Write-Host "Using windeployqt: $WIND_PATH"
-          Write-Host "Deploying for: $EXE_PATH"
+          Write-Host "Deploying for: $EXE_PATH",
 
           # Add Qt bin to PATH so windeployqt can find necessary DLLs during deployment
           $env:PATH = "${{ env.QT_ROOT_DIR }}\bin;" + $env:PATH
@@ -116,7 +116,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          export VERSION=0.1.0-${{ steps.git-sha.outputs.sha }}
+          export VERSION=0.0.1-${{ steps.git-sha.outputs.sha }}
           cmake --install build --prefix AppDir
 
           # Ensure linuxdeploy can find Qt libraries for dependency scanning
