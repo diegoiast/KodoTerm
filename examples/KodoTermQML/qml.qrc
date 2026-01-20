@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/KodoTermQML">
+        <file>main.qml</file>
+    </qresource>
+</RCC>

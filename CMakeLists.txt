@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Quick)
 if(UNIX AND NOT APPLE)
     find_package(Qt6 COMPONENTS DBus)
 endif()
@@ -45,7 +45,13 @@ target_include_directories(vterm PUBLIC
 set(KODOTERM_SOURCES
     src/KodoTerm.cpp
     src/KodoTermConfig.cpp
+    src/KodoTermSession.cpp
+    src/KodoTermRenderer.cpp
+    src/KodoQuickTerm.cpp
     include/KodoTerm/KodoTerm.hpp
+    include/KodoTerm/KodoTermSession.hpp
+    include/KodoTerm/KodoTermRenderer.hpp
+    include/KodoTerm/KodoQuickTerm.hpp
     src/PtyProcess.cpp
     src/PtyProcess.h
     KodoTermThemes.qrc
@@ -75,6 +81,7 @@ target_link_libraries(KodoTerm PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Quick
     vterm
 )
 
