@@ -21,6 +21,7 @@ class KodoTermRenderer {
     void moveRect(const QRect &dest, const QRect &src, int scrollValue, int sbSize);
 
     QSize cellSize() const { return m_cellSize; }
+    const QImage &backBuffer() const { return m_backBuffer; }
     bool isDirty() const { return m_dirty; }
     void setDirty(bool dirty = true);
 

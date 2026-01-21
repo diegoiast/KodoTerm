@@ -61,6 +61,18 @@ KodoTerm::KodoTerm(QWidget *parent) : QWidget(parent) {
 
 KodoTerm::~KodoTerm() {}
 
+void KodoTerm::setTheme(const TerminalTheme &theme) {
+    m_session->setTheme(theme);
+    m_renderer.setDirty();
+    update();
+}
+
+void KodoTerm::setConfig(const KodoTermConfig &config) {
+    m_session->setConfig(config);
+    setFont(config.font);
+    updateTerminalSize();
+}
+
 bool KodoTerm::start(bool reset) {
     if (reset) {
         m_cursorBlinkState = true;
@@ -109,9 +121,17 @@ void KodoTerm::onScrollValueChanged(int) {
 }
 
 void KodoTerm::paintEvent(QPaintEvent *e) {
+    if (m_renderer.backBuffer().devicePixelRatio() != devicePixelRatioF()) {
+        updateTerminalSize();
+    }
     QPainter painter(this);
     m_renderer.paint(painter, e->rect(), m_session, m_scrollBar->value(), hasFocus(),
                      m_cursorBlinkState);
+}
+
+void KodoTerm::showEvent(QShowEvent *e) {
+    QWidget::showEvent(e);
+    updateTerminalSize();
 }
 
 void KodoTerm::keyPressEvent(QKeyEvent *e) {

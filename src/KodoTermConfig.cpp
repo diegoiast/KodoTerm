@@ -324,8 +324,8 @@ void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
     font.setStyleHint(QFont::Monospace);
     font.setKerning(false);
-    textAntialiasing = false;
-    font.setStyleStrategy(QFont::NoAntialias);
+    textAntialiasing = true;
+    font.setStyleStrategy(QFont::PreferAntialias);
 
     customBoxDrawing = false;
     copyOnSelect = true;

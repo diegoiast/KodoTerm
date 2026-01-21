@@ -19,9 +19,11 @@ class KodoTerm : public QWidget {
     populateThemeMenu(QMenu *parentMenu, const QString &title, TerminalTheme::ThemeFormat format,
                       const std::function<void(const TerminalTheme::ThemeInfo &)> &callback);
 
-    void setTheme(const TerminalTheme &theme) { m_session->setTheme(theme); }
-    void setConfig(const KodoTermConfig &config) { m_session->setConfig(config); }
+    void setTheme(const TerminalTheme &theme);
+    void setConfig(const KodoTermConfig &config);
     KodoTermConfig getConfig() const { return m_session->config(); }
+
+    const QImage &backBuffer() const { return m_renderer.backBuffer(); }
 
     void setProgram(const QString &program) { m_session->setProgram(program); }
     QString program() const { return m_session->program(); }
@@ -41,6 +43,7 @@ class KodoTerm : public QWidget {
 
   protected:
     void paintEvent(QPaintEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;

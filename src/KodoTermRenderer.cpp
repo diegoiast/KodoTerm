@@ -33,6 +33,9 @@ void KodoTermRenderer::setDirty(bool dirty) {
         for (auto &c : m_cellCache) {
             c.chars[0] = (uint32_t)-1;
         }
+        for (size_t i = 0; i < m_selectedCache.size(); ++i) {
+            m_selectedCache[i] = false;
+        }
     }
 }
 
@@ -72,7 +75,17 @@ static bool cellsEqual(const KodoTermSession::SavedCell &a, const KodoTermSessio
 
 void KodoTermRenderer::updateSize(const QSize &viewSize, qreal dpr, KodoTermSession *session,
                                   int sbWidth) {
-    QFontMetrics fm(session->config().font);
+    const KodoTermConfig &cfg = session->config();
+    QFont f = cfg.font;
+    f.setKerning(false);
+    if (cfg.textAntialiasing) {
+        f.setStyleStrategy((QFont::StyleStrategy)(QFont::PreferAntialias | QFont::PreferQuality));
+        f.setHintingPreference(QFont::PreferFullHinting);
+    } else {
+        f.setStyleStrategy(QFont::NoAntialias);
+    }
+
+    QFontMetrics fm(f);
     m_cellSize = QSize(fm.horizontalAdvance('W'), fm.height());
     if (m_cellSize.width() <= 0 || m_cellSize.height() <= 0) {
         m_cellSize = QSize(10, 20);
@@ -122,6 +135,7 @@ void KodoTermRenderer::moveRect(const QRect &dest, const QRect &src, int scrollV
     QImage copy = m_backBuffer.copy(sPix);
     copy.setDevicePixelRatio(dpr);
     QPainter p(&m_backBuffer);
+    p.setRenderHint(QPainter::Antialiasing, false);
     p.drawImage(dPix.topLeft() / dpr, copy);
     p.end();
 
@@ -173,9 +187,16 @@ void KodoTermRenderer::renderToBackbuffer(KodoTermSession *session, int scrollVa
 
     QPainter painter(&m_backBuffer);
     const KodoTermConfig &cfg = session->config();
+
     QFont f = cfg.font;
     f.setKerning(false);
-    f.setStyleStrategy(cfg.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
+    if (cfg.textAntialiasing) {
+        f.setStyleStrategy((QFont::StyleStrategy)(QFont::PreferAntialias | QFont::PreferQuality));
+        f.setHintingPreference(QFont::PreferFullHinting);
+    } else {
+        f.setStyleStrategy(QFont::NoAntialias);
+    }
+
     painter.setFont(f);
     painter.setRenderHint(QPainter::TextAntialiasing, cfg.textAntialiasing);
     painter.setRenderHint(QPainter::Antialiasing, false);
@@ -257,10 +278,12 @@ void KodoTermRenderer::paint(QPainter &painter, const QRect &targetRect, KodoTer
     }
 
     QColor defBg = session->config().theme.background;
+    painter.setRenderHint(QPainter::Antialiasing, false);
     painter.fillRect(targetRect, defBg);
 
     if (!m_backBuffer.isNull()) {
-        painter.drawImage(0, 0, m_backBuffer);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+        painter.drawImage(targetRect.topLeft(), m_backBuffer, targetRect);
     }
 
     if (hasFocus && session->cursorVisible() && scrollValue == session->scrollbackSize() &&
