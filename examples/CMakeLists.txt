@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Author: Diego Iastrubni <diegoiast@gmail.com>
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2)
 if(UNIX AND NOT APPLE)
     find_package(Qt6 COMPONENTS DBus)
 endif()
@@ -93,3 +93,18 @@ set(CPACK_WIX_PROGRAM_MENU_FOLDER "KodoShell")
 #set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_WIX_SHORTCUTS "KodoShell.exe;KodoShell;KodoShell.ico")
+
+add_executable(KodoTermQML WIN32
+    KodoTermQML/main.cpp
+    KodoTermQML/qml.qrc
+)
+
+target_link_libraries(KodoTermQML PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::QuickControls2
+    KodoTerm::KodoTerm
+)
