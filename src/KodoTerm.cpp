@@ -707,7 +707,6 @@ void KodoTerm::renderToBackbuffer() {
 
     QPainter painter(&m_backBuffer);
     QFont f = font();
-    f.setKerning(false);
     f.setStyleStrategy(m_config.textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     painter.setFont(f);
     painter.setRenderHint(QPainter::TextAntialiasing, m_config.textAntialiasing);
@@ -800,7 +799,7 @@ void KodoTerm::renderToBackbuffer() {
                     n_chars++;
                 }
                 painter.setPen(fg);
-                painter.drawText(rect, Qt::AlignCenter,
+                painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter,
                                  QString::fromUcs4((const char32_t *)cell.chars, n_chars));
             }
 

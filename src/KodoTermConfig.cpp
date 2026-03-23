@@ -323,7 +323,7 @@ KodoTermConfig::KodoTermConfig() { setDefaults(); }
 void KodoTermConfig::setDefaults() {
     font = QFont("Monospace", 10);
     font.setStyleHint(QFont::Monospace);
-    font.setKerning(false);
+    font.setKerning(true);
     textAntialiasing = false;
     font.setStyleStrategy(QFont::NoAntialias);
 
@@ -351,7 +351,7 @@ void KodoTermConfig::load(const QJsonObject &json) {
     if (json.contains("textAntialiasing")) {
         textAntialiasing = json["textAntialiasing"].toBool();
     }
-    font.setKerning(false);
+    font.setKerning(true);
     font.setStyleStrategy(textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
 
     if (json.contains("customBoxDrawing")) {
@@ -420,7 +420,7 @@ void KodoTermConfig::load(QSettings &settings) {
         font.setPointSizeF(settings.value("font/size", 10).toDouble());
     }
     textAntialiasing = settings.value("textAntialiasing", textAntialiasing).toBool();
-    font.setKerning(false);
+    font.setKerning(true);
     font.setStyleStrategy(textAntialiasing ? QFont::PreferAntialias : QFont::NoAntialias);
     customBoxDrawing = settings.value("customBoxDrawing", customBoxDrawing).toBool();
     copyOnSelect = settings.value("copyOnSelect", copyOnSelect).toBool();
